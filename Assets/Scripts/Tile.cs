@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+// Tile grid could be made as a hashmap like in the paper, but that would get messy as there would ...
+    // need to be a separate script to initialize each tile; if performance suffers, consider the hashmap method
+
 // Attach this script to tile prefab
 public class Tile : MonoBehaviour
 {
@@ -25,7 +28,10 @@ public class Tile : MonoBehaviour
     {
         ants.Remove(ant);
     }
-
+    public Tile[] GetNeighbors()
+    {
+        return neighbors;
+    }
 
     private void Start()
     {
@@ -35,11 +41,11 @@ public class Tile : MonoBehaviour
         obstacles = new List<Obstacle>();
         disturbances = new List<Disturbance>();
 
-        neighbors = GetNeighbors();
+        neighbors = InitNeighbors();
     }
 
     // Returns references to all neighboring tiles
-    private Tile[] GetNeighbors()
+    private Tile[] InitNeighbors()
     {
         Vector2 pos = transform.position;
         // World position coordinates of neighboring tiles
