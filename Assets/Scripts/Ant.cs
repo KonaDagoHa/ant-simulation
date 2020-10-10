@@ -38,22 +38,32 @@ public class Ant : MonoBehaviour
     private void Start()
     {
         manager = GetComponentInParent<SimulationManager>();
-        // Assign ant random orientation by setting its z-rotation
-        transform.rotation = Quaternion.Euler(0, 0, Random.Range(0f, 360f));
+        // Assign ant random orientation by setting its z-rotation number between 0 and 360 degrees
+        transform.eulerAngles = new Vector3(0, 0, Random.Range(0f, 360f));
         currentTile = manager.GetTile(transform.position);
         currentTile.AddAnt(this);
     }
 
     private void Update()
     {
-        //DetermineMotion();
-        //ExecuteMotion();
+        DetermineMotion();
+        ExecuteMotion();
+
+        
     }
 
     // Called first at beginning of each timestep; determines if ant will stop or move and sets orientation accordingly
     private void DetermineMotion()
     {
         // if 0.5% chance
+        if (Random.value <= 0.05f)
+        {
+            motion = Motion.stop;
+        } else
+        {
+            motion = Motion.move;
+            //transform.eulerAngles += new Vector3(0, 0, Random.Range(-maxDeviationAngle, maxDeviationAngle));
+        }
             // motion = Motion.stop;
         // else
             // motion = Motion.move;
@@ -65,12 +75,18 @@ public class Ant : MonoBehaviour
 
     private void ExecuteMotion()
     {
+        // ants move perpendicular to their body; offset eulerAngles by 90 degrees because a eulerAngle of 0 is at the +y axis, not the +x axis
+
         if (motion == Motion.stop)
         {
             // Stop for certain time period (maybe through coroutine)
         } else if (motion == Motion.move)
         {
             // Move forward
+            // vector that points in ant's forward direction; the "+ 90" is needed to reorient ant's sprite to point in same direction as direction of movement
+            Vector2 moveVector = new Vector2(Mathf.Cos((transform.eulerAngles.z + 90) * Mathf.Deg2Rad), Mathf.Sin((transform.eulerAngles.z + 90) * Mathf.Deg2Rad));
+            moveVector = Vector2.ClampMagnitude(moveVector, speed * Time.deltaTime);
+            transform.position += (Vector3) moveVector;
         }
     }
 
