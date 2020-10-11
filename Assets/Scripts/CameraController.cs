@@ -10,7 +10,7 @@ public class CameraController : MonoBehaviour
     {
         manager = GetComponentInParent<SimulationManager>();
         // Center the camera on the tile grid
-        transform.position = new Vector3(manager.GetWidth() / 2f - manager.GetTileSize() / 2f, manager.GetHeight() / 2f - manager.GetTileSize() / 2f, -10);
+        transform.position = new Vector3(manager.maxColumns / 2f, manager.maxRows / 2f, -10);
     }
 
 }

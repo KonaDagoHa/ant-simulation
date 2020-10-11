@@ -10,9 +10,6 @@ public class SimulationManager : MonoBehaviour
     // Tiles
     private Tile[,] tiles;
     public int maxRows, maxColumns;
-    // tileSize, gridWidth, gridHeight are only here to make math cleaner; they are redundant due to maxRows and maxColumns
-    private int tileSize = 1; // Keep this at 1 for simplicity
-    private float gridWidth, gridHeight;
 
     // Nest
     private Nest nest;
@@ -21,15 +18,8 @@ public class SimulationManager : MonoBehaviour
     private Ant[] ants;
     public int antPopulation;
 
-    // Getters
-    public float GetWidth() { return gridWidth; }
-    public float GetHeight() { return gridHeight; }
-    public int GetTileSize() { return tileSize; }
-
     private void Awake()
     {
-        gridWidth = maxColumns * tileSize;
-        gridHeight = maxRows * tileSize;
 
         tiles = new Tile[maxColumns, maxRows];
         ants = new Ant[antPopulation];
@@ -70,7 +60,8 @@ public class SimulationManager : MonoBehaviour
         for (int i = 0; i < antPopulation; i++)
         {
             GameObject newAnt = Instantiate(antPrefab, transform);
-            newAnt.transform.position = nest.transform.position; // Ants all start at nest
+            //newAnt.transform.position = nest.transform.position; // Ants all start at nest
+            newAnt.transform.position = new Vector2(Random.Range(0, maxColumns), Random.Range(0, maxRows));
             ants[i] = newAnt.GetComponent<Ant>();
         }
     }

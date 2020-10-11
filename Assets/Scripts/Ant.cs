@@ -41,6 +41,11 @@ public class Ant : MonoBehaviour
     private Info info = Info.nothing;
     private Motion motion = Motion.move;
     private Tile currentTile; // Reference to the current tile the ant is on
+
+    // These two variables may not be needed
+    private Vector2 position; // Use this to cache transform.position in Start() if referred to repeatedly
+    private Vector2 orientation; // Use this to cache transform.eulerAngles if referred to repeated
+
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
     private float orientationWeight = 1f; // used to modify target orientation
     private float repulsionWeight = 1f; // used to affect the orientation of other ants in range
@@ -98,9 +103,6 @@ public class Ant : MonoBehaviour
                 // Once the first coroutine called finishes, the ant starts to move. the ant cannot stop again because the following coroutines keep setting motion to move
             // make a variable to tracks if the ant is currently stopping
 
-
-        // ants move perpendicular to their body; offset eulerAngles by 90 degrees because a eulerAngle of 0 is at the +y axis, not the +x axis
-
         if (motion == Motion.stop && !stopTimerIsRunning)
         {
             stopTimerIsRunning = true;
@@ -111,9 +113,13 @@ public class Ant : MonoBehaviour
             Vector2 moveVector = new Vector2(Mathf.Cos((transform.eulerAngles.z + 90) * Mathf.Deg2Rad), Mathf.Sin((transform.eulerAngles.z + 90) * Mathf.Deg2Rad));
             moveVector = Vector2.ClampMagnitude(moveVector, moveSpeed * Time.deltaTime);
             transform.position += (Vector3) moveVector; // Move forward
-            // TODO: consider using rigidbody2D.MovePosition instead of setting transform position
-                // For some reason, ant's rigidbody2d set to kinematic instead of dynamic will not collide with each other. find out why
         }
+
+        // Restrict ant's position so that it doesn't go off the grid
+        float posX = Mathf.Clamp(transform.position.x, 0, manager.maxColumns);
+        float posY = Mathf.Clamp(transform.position.y, 0, manager.maxRows);
+        transform.position = new Vector2(posX, posY);
+
     }
 
     // Stop for certain time period
