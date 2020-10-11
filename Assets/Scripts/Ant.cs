@@ -26,14 +26,22 @@ public class Ant : MonoBehaviour
 
     private SimulationManager manager;
 
+
+
+    //[SerializeField]
     private float maxDeviationAngle = 30f; // Maximum turning angle of new orientations
-    private float speed = 1f; // Movement speed
+    //[SerializeField]
+    private float moveSpeed = 1; // Movement speed
+    //[SerializeField]
+    private float stopTimeLength = 1f; // in seconds
+
+
+
 
     private Info info = Info.nothing;
     private Motion motion = Motion.move;
-    
-
     private Tile currentTile; // Reference to the current tile the ant is on
+    private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
 
     private void Start()
     {
@@ -52,42 +60,64 @@ public class Ant : MonoBehaviour
         
     }
 
+
+
+
     // Called first at beginning of each timestep; determines if ant will stop or move and sets orientation accordingly
     private void DetermineMotion()
     {
-        // if 0.5% chance
-        if (Random.value <= 0.05f)
+        if (motion == Motion.move) // if ant is moving
         {
-            motion = Motion.stop;
-        } else
-        {
-            motion = Motion.move;
-            //transform.eulerAngles += new Vector3(0, 0, Random.Range(-maxDeviationAngle, maxDeviationAngle));
-        }
+            if (Random.value <= 0.05) // if 0.5% chance, stop
+            {
+                motion = Motion.stop;
+            } else // keep moving, adjust orientation
+            {
+                //transform.eulerAngles += new Vector3(0, 0, Random.Range(-maxDeviationAngle, maxDeviationAngle));
+            }
             // motion = Motion.stop;
-        // else
+            // else
             // motion = Motion.move;
             // Add to ant's orientation by angle within -maxDeviationAngle and +maxDeviationAngle
             // Call CheckStop()
             // Call CheckInteractions()
             // Call CheckCollisions()
+        }
     }
 
+    // Execute ant's motion based on motion state
     private void ExecuteMotion()
     {
+        // Ants only seem to stop at the beginning of the simulation
+        // yield return new waitforseconds runs only once per simulation; fix this
+        // Try assigning startcoroutine to new variable and invoking stopcoroutine after certain time period
+        // motion needs to be set to move BEFORE starting coroutine so that a new coroutine is not start every single frame
+            // This is why ants stop at the beginning and never stop again; from the start of the simulation, ants call a coroutine every frame
+                // Once the first coroutine called finishes, the ant starts to move. the ant cannot stop again because the following coroutines keep setting motion to move
+            // make a variable to tracks if the ant is currently stopping
+
+
         // ants move perpendicular to their body; offset eulerAngles by 90 degrees because a eulerAngle of 0 is at the +y axis, not the +x axis
 
-        if (motion == Motion.stop)
+        if (motion == Motion.stop && !stopTimerIsRunning)
         {
-            // Stop for certain time period (maybe through coroutine)
+            stopTimerIsRunning = true;
+            StartCoroutine(StopTimer());
         } else if (motion == Motion.move)
         {
-            // Move forward
             // vector that points in ant's forward direction; the "+ 90" is needed to reorient ant's sprite to point in same direction as direction of movement
             Vector2 moveVector = new Vector2(Mathf.Cos((transform.eulerAngles.z + 90) * Mathf.Deg2Rad), Mathf.Sin((transform.eulerAngles.z + 90) * Mathf.Deg2Rad));
-            moveVector = Vector2.ClampMagnitude(moveVector, speed * Time.deltaTime);
-            transform.position += (Vector3) moveVector;
+            moveVector = Vector2.ClampMagnitude(moveVector, moveSpeed * Time.deltaTime);
+            transform.position += (Vector3) moveVector; // Move forward
         }
+    }
+
+    // Stop for certain time period
+    private IEnumerator StopTimer()
+    {
+        yield return new WaitForSeconds(stopTimeLength);
+        motion = Motion.move;
+        stopTimerIsRunning = false;
     }
 
 
@@ -166,7 +196,7 @@ public class Ant : MonoBehaviour
     }
 
     // Checks if ant's collider2d is touching a food or nest's collider2d and sets motion state accordingly
-    private void CheckStop()
+    private void CheckStopMotion()
     {
         // Collider2d between ants and food/nest cannot have physics for this to work (ants can overlap food/nest)
 

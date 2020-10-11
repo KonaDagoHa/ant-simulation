@@ -115,3 +115,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6616c40dee26b44f98b425847104f1b6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  maxDeviationAngle: 30
+  moveSpeed: 0.1
+  stopTimeLength: 1000
