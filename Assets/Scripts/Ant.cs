@@ -29,9 +29,9 @@ public class Ant : MonoBehaviour
 
 
     //[SerializeField]
-    private float maxDeviationAngle = 30f; // Maximum turning angle of new orientations
+    private float maxDeviationAngle = 5f; // Maximum turning angle of new orientations
     //[SerializeField]
-    private float moveSpeed = 1; // Movement speed
+    private float moveSpeed = 0.5f; // Movement speed
     //[SerializeField]
     private float stopTimeLength = 1f; // in seconds
 
@@ -42,6 +42,8 @@ public class Ant : MonoBehaviour
     private Motion motion = Motion.move;
     private Tile currentTile; // Reference to the current tile the ant is on
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
+    private float orientationWeight = 1f; // used to modify target orientation
+    private float repulsionWeight = 1f; // used to affect the orientation of other ants in range
 
     private void Start()
     {
@@ -68,12 +70,12 @@ public class Ant : MonoBehaviour
     {
         if (motion == Motion.move) // if ant is moving
         {
-            if (Random.value <= 0.05) // if 0.5% chance, stop
+            if (Random.value <= 0.001) // if small percentage chance, stop
             {
                 motion = Motion.stop;
             } else // keep moving, adjust orientation
             {
-                //transform.eulerAngles += new Vector3(0, 0, Random.Range(-maxDeviationAngle, maxDeviationAngle));
+                transform.eulerAngles += new Vector3(0, 0, Random.Range(-maxDeviationAngle, maxDeviationAngle));
             }
             // motion = Motion.stop;
             // else
@@ -109,6 +111,8 @@ public class Ant : MonoBehaviour
             Vector2 moveVector = new Vector2(Mathf.Cos((transform.eulerAngles.z + 90) * Mathf.Deg2Rad), Mathf.Sin((transform.eulerAngles.z + 90) * Mathf.Deg2Rad));
             moveVector = Vector2.ClampMagnitude(moveVector, moveSpeed * Time.deltaTime);
             transform.position += (Vector3) moveVector; // Move forward
+            // TODO: consider using rigidbody2D.MovePosition instead of setting transform position
+                // For some reason, ant's rigidbody2d set to kinematic instead of dynamic will not collide with each other. find out why
         }
     }
 
@@ -124,6 +128,7 @@ public class Ant : MonoBehaviour
     // Check current and neighboring tiles for possible interactions and adjust orientation accordingly
     private void CheckInteractions()
     {
+        float repulsion = 0; // sum of all orientational repulsions from environment/neighbors
         // Only disturbances can interrupt ant stopping
         // TODO: Also need to check if the closest entity for each type of interaction (obstacles, disturbances, nests, food, neighboring ants) ...
             // if within a certain distance range
@@ -217,4 +222,7 @@ public class Ant : MonoBehaviour
 
     // Consider making it so ants can overlap each other when within certain range of nest/food (this will fix bugs with ants getting stuck)
     // OR just make it so ants can't collide with other ants (Plan B)
+    // To make ants collide, add Collider2D and Rigidbody2D components to Ant prefab
+    // Add Collider2D to Food and Nest prefab, but make sure to check "is trigger" since ants will need to go through food and nest
+        // Maybe experiment on whether ants can go through food or nest
 }

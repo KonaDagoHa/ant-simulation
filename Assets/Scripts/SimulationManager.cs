@@ -53,6 +53,8 @@ public class SimulationManager : MonoBehaviour
         }
     }
 
+    // TODO: Make an invisible boundary surrounding the grid that will have collider2d and static rigidbody2d components to prevent ants from going outside grid
+
     // Create ant nest
     private void CreateNest()
     {
