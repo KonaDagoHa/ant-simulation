@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Attach this script to ant prefab
+[RequireComponent(typeof(Collider2D))]
 public class Ant : MonoBehaviour
 {
     private enum Info // Info to transferred to other ants
@@ -18,6 +19,7 @@ public class Ant : MonoBehaviour
     }
 
     private SimulationManager manager;
+    private Collider2D collider2d;
 
 
 
@@ -34,18 +36,22 @@ public class Ant : MonoBehaviour
     private Info info = Info.nothing;
     private Motion motion = Motion.moving;
     private Tile currentTile; // Reference to the current tile the ant is on
+    private Tile[] neighborTiles;
 
     // These two variables may not be needed
     private Vector2 currentPosition; // Use this to cache transform.position in Start() if referred to repeatedly
     private Vector2 currentOrientation; // Use this to cache transform.eulerAngles if referred to repeatedly
 
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
+    private bool interactingWithFoodOrNest = false; // used to reassign motion state after interaction
     private float orientationWeight = 1f; // used to modify target orientation
     private float repulsionWeight = 1f; // used to affect the orientation of other ants in range
 
     private void Start()
     {
         manager = GetComponentInParent<SimulationManager>();
+        collider = GetComponent<Collider2D>();
+        Debug.Log(collider);
         // Initialize position
         currentPosition = new Vector2(Random.Range(0.5f, manager.maxColumns - 0.5f), Random.Range(0.5f, manager.maxRows - 0.5f));
         transform.position = currentPosition;
@@ -78,6 +84,7 @@ public class Ant : MonoBehaviour
             currentTile.RemoveAnt(this); // Remove ant from previous tile
             currentTile = manager.GetTile(currentPosition); // Update currentTile to the current tile
             currentTile.AddAnt(this); // Add ant to the current tile
+            neighborTiles = currentTile.GetNeighbors();
         }
         
     }
@@ -87,7 +94,7 @@ public class Ant : MonoBehaviour
     {
         if (motion == Motion.moving) // if ant is moving
         {
-            if (Random.value <= 0.005) // if small percentage chance, stop
+            if (Random.value <= -0.005) // if small percentage chance, stop
             {
                 motion = Motion.stopping;
             } else // keep moving, adjust orientation
@@ -121,8 +128,10 @@ public class Ant : MonoBehaviour
             // vector that points in ant's forward direction; the "+ 90" is needed to reorient ant's sprite to point in same direction as direction of movement
             Vector2 moveVector = new Vector2(Mathf.Cos((transform.eulerAngles.z + 90) * Mathf.Deg2Rad), Mathf.Sin((transform.eulerAngles.z + 90) * Mathf.Deg2Rad));
             moveVector = Vector2.ClampMagnitude(moveVector, moveSpeed * Time.deltaTime);
-            transform.position += (Vector3) moveVector; // Move forward
+            currentPosition += moveVector; // Move forward
         }
+
+        transform.position = currentPosition;
 
     }
 
@@ -132,6 +141,18 @@ public class Ant : MonoBehaviour
         yield return new WaitForSeconds(stopTimeLength);
         motion = Motion.moving;
         stopTimerIsRunning = false;
+        // For stopping to interact with food/nest
+        if (interactingWithFoodOrNest)
+        {
+            interactingWithFoodOrNest = false;
+            if (info == Info.nest || info == Info.nothing)
+            {
+                info = Info.food;
+            } else if (info == Info.food)
+            {
+                info = Info.nest;
+            }
+        }
     }
 
 
@@ -153,8 +174,9 @@ public class Ant : MonoBehaviour
 
 
         // If motion != Motion.stop (assumes that motion == Motion.move)
+        
 
-            Tile[] neighborTiles = currentTile.GetNeighbors();
+            //Tile[] neighborTiles = currentTile.GetNeighbors();
             // Interaction priorities: environment > neighbors
             // Environment priorities: obstacles > disturbances > food = nest
 
@@ -211,19 +233,22 @@ public class Ant : MonoBehaviour
     }
 
     // Checks if ant's collider2d is touching a food or nest's collider2d and sets motion state accordingly
-    private void InteractFood()
+    private void InteractNest(Nest nest)
     {
-        // Collider2d between ants and food/nest cannot have physics for this to work (ants can overlap food/nest)
-
-        // If touching food and (info == Info.nest or info == Info.nothing)
-            // motion = Motion.stop;
-        // else if touching nest and info == Info.food
-            // motion = Motion.stop;
+        if (collider2d.IsTouching(nest.GetCollider()) && info == Info.food)
+        {
+            motion = Motion.stopping;
+            interactingWithFoodOrNest = true;
+        }
     }
 
-    private void InteractNest()
+    private void InteractFood(Food food)
     {
-
+        if (collider2d.IsTouching(food.GetCollider()) && (info == Info.nest || info == Info.nothing))
+        {
+            motion = Motion.stopping;
+            interactingWithFoodOrNest = true;
+        }
     }
 
     // Check for collisions with neighbor ants and grid boundaries

@@ -293,7 +293,7 @@ PrefabInstance:
     - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
         type: 3}
       propertyPath: antPopulation
-      value: 500
+      value: 1000
       objectReference: {fileID: 0}
     - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
         type: 3}
