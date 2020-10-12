@@ -26,8 +26,10 @@ public class Ant : MonoBehaviour
     //[SerializeField]
     private float maxDeviationAngle = 5f; // Maximum turning angle of new orientations
     //[SerializeField]
+    //[Range(0, 1)]
     private float moveSpeed = 0.5f; // Movement speed
     //[SerializeField]
+    //[Range(0, 5)]
     private float stopTimeLength = 1f; // in seconds
 
 
@@ -38,9 +40,14 @@ public class Ant : MonoBehaviour
     private Tile currentTile; // Reference to the current tile the ant is on
     private Tile[] neighborTiles;
 
-    // These two variables may not be needed
-    private Vector2 currentPosition; // Use this to cache transform.position in Start() if referred to repeatedly
-    private Vector2 currentOrientation; // Use this to cache transform.eulerAngles if referred to repeatedly
+    // Guide:
+        // Position is ant's position in Vector2(x, y) corresponding with transform.position
+        // Rotation is ant's rotation in Vector3(x, y, z) corresponding with transform.eulerAngles (x and y are always 0)
+        // Orientation is ant's forward facing unit vector in Vector2(x, y) calculated based on its rotation
+
+    private Vector2 previousPosition; // position at the beginning of the previous frame
+    private Vector2 currentPosition; // assign to transform.position at end of frame
+    private float currentRotationZ; // assign to transform.eulerAngles.z at end of frame
 
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
     private bool interactingWithFoodOrNest = false; // used to reassign motion state after interaction
@@ -50,24 +57,28 @@ public class Ant : MonoBehaviour
     private void Start()
     {
         manager = GetComponentInParent<SimulationManager>();
-        collider = GetComponent<Collider2D>();
-        Debug.Log(collider);
+        collider2d = GetComponent<Collider2D>();
         // Initialize position
-        currentPosition = new Vector2(Random.Range(0.5f, manager.maxColumns - 0.5f), Random.Range(0.5f, manager.maxRows - 0.5f));
-        transform.position = currentPosition;
+        transform.position = new Vector2(Random.Range(0.5f, manager.maxColumns - 0.5f), Random.Range(0.5f, manager.maxRows - 0.5f));
+        previousPosition = currentPosition = transform.position;
 
-        // Initialize orientation by setting its z-rotation to random number between 0 and 360 degrees
-        transform.eulerAngles = new Vector3(0, 0, Random.Range(0f, 360f));
+        // Initialize rotation by setting its component to random number between -180 and 180 degrees
+        transform.eulerAngles = new Vector3(0, 0, Random.Range(-180f, 180f));
+        currentRotationZ = transform.eulerAngles.z;
+
         // Add ant to tile
-        currentTile = manager.GetTile(currentPosition);
+        currentTile = manager.GetTile(transform.position);
         currentTile.AddAnt(this);
+
+        // Update neighbor tiles
+        neighborTiles = currentTile.GetNeighbors();
     }
 
     private void Update()
     {
         UpdateTile();
-        currentPosition = transform.position;
-        currentOrientation = transform.eulerAngles;
+        previousPosition = currentPosition = transform.position;
+        currentRotationZ = transform.eulerAngles.z;
         DetermineMotion();
         ExecuteMotion();
 
@@ -77,14 +88,14 @@ public class Ant : MonoBehaviour
     // Updates the ant's current tile
     private void UpdateTile()
     {
-        // If ant is on a different tile than the one in the previous timestep
-        if (manager.GetTilePosition(currentPosition) != manager.GetTilePosition(transform.position)) 
+        // If ant is on a different tile than the one in the previous timestep,
+            // In other words, if previous tile position is different from current tile position,
+        if (manager.GetTilePosition(previousPosition) != manager.GetTilePosition(transform.position)) 
         {
-            // currentPosition is the previous position, and transform.position is the current position
             currentTile.RemoveAnt(this); // Remove ant from previous tile
-            currentTile = manager.GetTile(currentPosition); // Update currentTile to the current tile
+            currentTile = manager.GetTile(transform.position); // Update currentTile to the current tile
             currentTile.AddAnt(this); // Add ant to the current tile
-            neighborTiles = currentTile.GetNeighbors();
+            neighborTiles = currentTile.GetNeighbors(); // Update neighboring tiles
         }
         
     }
@@ -94,22 +105,16 @@ public class Ant : MonoBehaviour
     {
         if (motion == Motion.moving) // if ant is moving
         {
-            if (Random.value <= -0.005) // if small percentage chance, stop
+            if (Random.value <= 0.005) // if small percentage chance
             {
-                motion = Motion.stopping;
-            } else // keep moving, adjust orientation
-            {
-
-
-                transform.eulerAngles += new Vector3(0, 0, Random.Range(-maxDeviationAngle, maxDeviationAngle));
+                motion = Motion.stopping; // stop
             }
-            // motion = Motion.stop;
-            // else
-            // motion = Motion.move;
-            // Add to ant's orientation by angle within -maxDeviationAngle and +maxDeviationAngle
-            // Call CheckStop()
-            // Call CheckInteractions()
-            // Call CheckCollisions()
+            else // keep moving
+            {
+                currentRotationZ += Random.Range(-maxDeviationAngle, maxDeviationAngle); // adjust rotation
+                CheckInteractions();
+                // Call CheckCollisions()
+            }
         }
     }
 
@@ -121,18 +126,16 @@ public class Ant : MonoBehaviour
         {
             stopTimerIsRunning = true;
             StartCoroutine(StopTimer());
-        } else if (motion == Motion.moving)
+        }
+        else if (motion == Motion.moving)
         {
-
-
-            // vector that points in ant's forward direction; the "+ 90" is needed to reorient ant's sprite to point in same direction as direction of movement
-            Vector2 moveVector = new Vector2(Mathf.Cos((transform.eulerAngles.z + 90) * Mathf.Deg2Rad), Mathf.Sin((transform.eulerAngles.z + 90) * Mathf.Deg2Rad));
+            Vector2 moveVector = SimulationManager.RotationZToOrientation(currentRotationZ);
             moveVector = Vector2.ClampMagnitude(moveVector, moveSpeed * Time.deltaTime);
             currentPosition += moveVector; // Move forward
         }
 
         transform.position = currentPosition;
-
+        transform.eulerAngles = new Vector3(0, 0, currentRotationZ); 
     }
 
     // Stop for certain time period
@@ -141,6 +144,7 @@ public class Ant : MonoBehaviour
         yield return new WaitForSeconds(stopTimeLength);
         motion = Motion.moving;
         stopTimerIsRunning = false;
+
         // For stopping to interact with food/nest
         if (interactingWithFoodOrNest)
         {
@@ -148,7 +152,8 @@ public class Ant : MonoBehaviour
             if (info == Info.nest || info == Info.nothing)
             {
                 info = Info.food;
-            } else if (info == Info.food)
+            }
+            else if (info == Info.food)
             {
                 info = Info.nest;
             }
@@ -159,7 +164,6 @@ public class Ant : MonoBehaviour
     // Check current and neighboring tiles for possible interactions and adjust orientation accordingly
     private void CheckInteractions()
     {
-        float repulsion = 0; // sum of all orientational repulsions from environment/neighbors
         // Only disturbances can interrupt ant stopping
         // TODO: Also need to check if the closest entity for each type of interaction (obstacles, disturbances, nests, food, neighboring ants) ...
             // if within a certain distance range
@@ -172,17 +176,21 @@ public class Ant : MonoBehaviour
 
         // when ant stops at food/nest, the ant's info only changes to food/nest respectively AFTER the timer for stopping runs out (when the ant is no longer stopping)
 
+        // TODO: make a Vector2 orientationVector instead of using transform.eulerAngles
+            // Convert orientationVector to transform.eulerAngles at end of frame
 
-        // If motion != Motion.stop (assumes that motion == Motion.move)
-        
+        if (motion == Motion.moving)
+        {
 
-            //Tile[] neighborTiles = currentTile.GetNeighbors();
+
             // Interaction priorities: environment > neighbors
             // Environment priorities: obstacles > disturbances > food = nest
+            // Therefore: obstacles > disturbances > food = nest > neighbor ants
 
             // *** Check for environmental interactions ***
 
-            // if current or neighbor tiles have an obstacle
+            InteractObstacles();
+            
                 // for each obstacle
                     // find the obstacle that is closest to ant's position
                     // set ant's orientation to be perpendicular to the vector pointing from ant to obstacle (50/50 chance for left/right)
@@ -210,7 +218,7 @@ public class Ant : MonoBehaviour
                
             // *** Check for neighbor interactions ***
 
-            // else if current tile has neighbor ants (not neighboring tile because these ants communicate through physical contact)
+            // if current tile has neighbor ants (not neighboring tile because these ants communicate through physical contact)
                 // for each neighbor ant in current or neighboring tiles (if there are any)
                     // if info == Info.nest or info == Info.nothing
                         // if neighborAnt.info == Info.food
@@ -220,17 +228,65 @@ public class Ant : MonoBehaviour
                     // else if int == info.food
                         // if neighborAnt.info == Info.nest
                             // Change orientation to move toward nest
+        }
 
         // else (Ant is currently stopping)
 
             // if current or neighboring tiles have a disturbance
                 // motion = Motion.move;
                 // for each disturbance in current or neighboring tiles
-                    // 
+                    //
+
 
         
 
     }
+
+    // Ants change their orientation to be perpendicular to the vector pointing from ant to obstacle (50/50 chance for left/right)
+    // TODO: Make it so ant's only check for obstacles within a certain circular range
+    private void InteractObstacles()
+    {
+        List<Obstacle> totalObstacles = currentTile.GetObstacles(); // add obstacles of current tile to totalObstacles
+        for (int i = 0; i < neighborTiles.Length; i++) // For each neighboring tile
+        {
+            neighborTiles[i].GetObstacles().ForEach(obstacle => totalObstacles.Add(obstacle)); // add obstacles of tile to totalObstacles
+        }
+        if (totalObstacles.Count > 0) // if there are 1 or more obstacles
+        {
+            Obstacle closestObstacle = totalObstacles[0];
+            Vector2 vectorObstacleToAnt = transform.position - closestObstacle.transform.position;
+
+            if (totalObstacles.Count > 1) // if there are 2 or more obstacles
+            {
+                float distanceToClosestObstacle = vectorObstacleToAnt.magnitude;
+                float distance; // Temporary distance for Vector2 calculation
+
+                for (int i = 1; i < totalObstacles.Count; i++) // find and assign closest obstacle to closestObstacle
+                {
+                    distance = Vector2.Distance(transform.position, totalObstacles[i].transform.position);
+
+                    if (distance < distanceToClosestObstacle)
+                    {
+                        distanceToClosestObstacle = distance;
+                        closestObstacle = totalObstacles[i];
+                    }
+                }
+
+                vectorObstacleToAnt = transform.position - closestObstacle.transform.position;
+            }
+
+            Vector2 normalVectorObstacleToAnt = Vector2.Perpendicular(vectorObstacleToAnt);
+            if (Random.Range(0, 2) == 0) // 50/50 chance for normal vector to go left or right
+            {
+                normalVectorObstacleToAnt *= -1;
+            }
+
+            // Reassign currentRotationZ
+            currentRotationZ = SimulationManager.OrientationToRotationZ(normalVectorObstacleToAnt);
+        }
+    }
+
+    // TODO: ant should orient itself toward the food/nest before stopping
 
     // Checks if ant's collider2d is touching a food or nest's collider2d and sets motion state accordingly
     private void InteractNest(Nest nest)
@@ -249,6 +305,12 @@ public class Ant : MonoBehaviour
             motion = Motion.stopping;
             interactingWithFoodOrNest = true;
         }
+    }
+
+    // Interact with neighboring ants by adjusting orientation to avoid collision
+    private void InteractNeighbors()
+    {
+
     }
 
     // Check for collisions with neighbor ants and grid boundaries

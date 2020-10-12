@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+
+
 public class SimulationManager : MonoBehaviour
 {
     // Prefabs
-    public GameObject tilePrefab, nestPrefab, foodPrefab, antPrefab, boundaryWallPrefab;
+    public GameObject tilePrefab, nestPrefab, foodPrefab, obstaclePrefab, antPrefab, boundaryWallPrefab;
 
     // Tiles
     private Tile[,] tiles;
@@ -17,7 +19,6 @@ public class SimulationManager : MonoBehaviour
 
     private void Awake()
     {
-
         tiles = new Tile[maxColumns, maxRows];
         ants = new Ant[antPopulation];
 
@@ -25,6 +26,7 @@ public class SimulationManager : MonoBehaviour
         CreateBoundary();
         CreateNest();
         CreateFood();
+        CreateObstacles();
         CreateAnts();
     }
 
@@ -45,7 +47,6 @@ public class SimulationManager : MonoBehaviour
     // Create an invisible boundary around the tile grid (prevents ants from moving off grid)
     private void CreateBoundary()
     {
-        
         GameObject topWall = Instantiate(boundaryWallPrefab, transform);
         topWall.transform.localScale = new Vector2(maxColumns + 2, 1);
         topWall.transform.position = new Vector2(-1, maxRows);
@@ -74,6 +75,11 @@ public class SimulationManager : MonoBehaviour
         Instantiate(foodPrefab, transform);
     }
 
+    private void CreateObstacles()
+    {
+        Instantiate(obstaclePrefab, transform);
+    }
+
     private void CreateAnts()
     {
         for (int i = 0; i < antPopulation; i++)
@@ -100,4 +106,31 @@ public class SimulationManager : MonoBehaviour
 
         return new Vector2Int(x, y);
     }
+
+    // *** Static Methods ***
+
+    // Takes in a rotation vector (transform.eulerAngles) and converts it into a 2D unit vector in same direction on xy-plane
+        // Only rotVector.z (transform.eulerAngles.z) component matters
+    public static Vector2 RotationToOrientation(Vector3 rotVector)
+    {
+        return RotationZToOrientation(rotVector.z);
+    }
+    
+    // Takes in a orientation vector with (x, y) coordinates and converts to a rotation vector to be assigned to transform.eulerAngles
+    public static Vector3 OrientationToRotation(Vector2 oriVector)
+    {
+        return new Vector3(0, 0, OrientationToRotationZ(oriVector));
+    }
+
+    public static Vector2 RotationZToOrientation(float rotZ)
+    {
+        return new Vector2(Mathf.Cos((rotZ + 90f) * Mathf.Deg2Rad), Mathf.Sin((rotZ + 90f) * Mathf.Deg2Rad));
+    }
+
+    // Takes in orientation vector and only returns z component of rotation vector
+    public static float OrientationToRotationZ(Vector2 oriVector)
+    {
+        return Mathf.Atan2(oriVector.y, oriVector.x) * Mathf.Rad2Deg - 90f;
+    }
+    
 }

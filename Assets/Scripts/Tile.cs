@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Tile grid could be made as a hashmap like in the paper, but that would get messy as there would ...
-    // need to be a separate script to initialize each tile; if performance suffers, consider the hashmap method
-
 // Attach this script to tile prefab
 public class Tile : MonoBehaviour
 {
@@ -22,13 +19,19 @@ public class Tile : MonoBehaviour
     // Functions for Ant.cs
     public void AddAnt(Ant ant) { ants.Add(ant); }
     public void RemoveAnt(Ant ant) { ants.Remove(ant); }
-    public Tile[] GetNeighbors() { return neighbors; }
     // Functions for Nest.cs
     public void AddNest(Nest nest) { nests.Add(nest);  }
     public void RemoveNest(Nest nest) { nests.Remove(nest); }
     // Functions for Food.cs
     public void AddFood(Food food) { foods.Add(food); }
     public void RemoveFood(Food food) { foods.Remove(food); }
+    // Functions for Obstacle.cs
+    public void AddObstacle(Obstacle obstacle) { obstacles.Add(obstacle); }
+    public void RemoveObstacle(Obstacle obstacle) { obstacles.Remove(obstacle); }
+
+    // Getters
+    public Tile[] GetNeighbors() { return neighbors; }
+    public List<Obstacle> GetObstacles() { return obstacles; }
 
     private void Start()
     {
