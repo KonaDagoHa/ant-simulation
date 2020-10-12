@@ -15,29 +15,27 @@ public class Tile : MonoBehaviour
     // Lists to track occupants currently on tile
     private List<Ant> ants;
     private List<Nest> nests;
+    private List<Food> foods;
     private List<Obstacle> obstacles;
     private List<Disturbance> disturbances;
 
     // Functions for Ant.cs
-    public void AddAnt(Ant ant)
-    {
-        // This is the source of the nullreferror
-        ants.Add(ant);
-    }
-    public void RemoveAnt(Ant ant)
-    {
-        ants.Remove(ant);
-    }
-    public Tile[] GetNeighbors()
-    {
-        return neighbors;
-    }
+    public void AddAnt(Ant ant) { ants.Add(ant); }
+    public void RemoveAnt(Ant ant) { ants.Remove(ant); }
+    public Tile[] GetNeighbors() { return neighbors; }
+    // Functions for Nest.cs
+    public void AddNest(Nest nest) { nests.Add(nest);  }
+    public void RemoveNest(Nest nest) { nests.Remove(nest); }
+    // Functions for Food.cs
+    public void AddFood(Food food) { foods.Add(food); }
+    public void RemoveFood(Food food) { foods.Remove(food); }
 
     private void Start()
     {
         manager = GetComponentInParent<SimulationManager>();
         ants = new List<Ant>();
         nests = new List<Nest>();
+        foods = new List<Food>();
         obstacles = new List<Obstacle>();
         disturbances = new List<Disturbance>();
 
@@ -77,12 +75,6 @@ public class Tile : MonoBehaviour
 
         return neighborList.ToArray();
 
-    }
-
-    // Returns references to all entities currently occupying this tile
-    private void checkOccupants()
-    {
-        // Dont use this method; other entities will be responsible for 
     }
     
 }

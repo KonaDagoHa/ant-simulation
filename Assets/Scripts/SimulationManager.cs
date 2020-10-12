@@ -5,14 +5,11 @@ using UnityEngine;
 public class SimulationManager : MonoBehaviour
 {
     // Prefabs
-    public GameObject tilePrefab, nestPrefab, antPrefab;
+    public GameObject tilePrefab, nestPrefab, foodPrefab, antPrefab, boundaryWallPrefab;
 
     // Tiles
     private Tile[,] tiles;
     public int maxRows, maxColumns;
-
-    // Nest
-    private Nest nest;
 
     // Ants
     private Ant[] ants;
@@ -24,13 +21,15 @@ public class SimulationManager : MonoBehaviour
         tiles = new Tile[maxColumns, maxRows];
         ants = new Ant[antPopulation];
 
-        CreateTiles();
+        CreateGrid();
+        CreateBoundary();
         CreateNest();
+        CreateFood();
         CreateAnts();
     }
 
     // Create a grid of tiles
-    private void CreateTiles()
+    private void CreateGrid()
     {
         for (int x = 0; x < maxColumns; x++)
         {
@@ -43,33 +42,62 @@ public class SimulationManager : MonoBehaviour
         }
     }
 
-    // TODO: Make an invisible boundary surrounding the grid that will have collider2d and static rigidbody2d components to prevent ants from going outside grid
+    // Create an invisible boundary around the tile grid (prevents ants from moving off grid)
+    private void CreateBoundary()
+    {
+        
+        GameObject topWall = Instantiate(boundaryWallPrefab, transform);
+        topWall.transform.localScale = new Vector2(maxColumns + 2, 1);
+        topWall.transform.position = new Vector2(-1, maxRows);
 
-    // Create ant nest
+        GameObject rightWall = Instantiate(boundaryWallPrefab, transform);
+        rightWall.transform.localScale = new Vector2(1, maxRows + 2);
+        rightWall.transform.position = new Vector2(maxColumns, -1);
+
+        GameObject bottomWall = Instantiate(boundaryWallPrefab, transform);
+        bottomWall.transform.localScale = new Vector2(maxColumns + 2, 1);
+        bottomWall.transform.position = new Vector2(-1, -1);
+
+        GameObject leftWall = Instantiate(boundaryWallPrefab, transform);
+        leftWall.transform.localScale = new Vector2(1, maxRows + 2);
+        leftWall.transform.position = new Vector2(-1, -1);
+    }
+
     private void CreateNest()
     {
-        GameObject newNest = Instantiate(nestPrefab, transform);
-        newNest.transform.position = new Vector3(Random.Range(1, maxColumns - 1), Random.Range(1, maxRows - 1));
-        nest = newNest.GetComponent<Nest>();
+        Instantiate(nestPrefab, transform);
 
     }
 
-    // Create and populate ants
+    private void CreateFood()
+    {
+        Instantiate(foodPrefab, transform);
+    }
+
     private void CreateAnts()
     {
         for (int i = 0; i < antPopulation; i++)
         {
             GameObject newAnt = Instantiate(antPrefab, transform);
-            //newAnt.transform.position = nest.transform.position; // Ants all start at nest
-            newAnt.transform.position = new Vector2(Random.Range(0, maxColumns), Random.Range(0, maxRows));
             ants[i] = newAnt.GetComponent<Ant>();
         }
     }
 
-    // Returns reference to tile given position coordinates
+    // Returns reference to tile given floating point position coordinates
     public Tile GetTile(Vector2 pos)
     {
-        // pos can have floats for coordinates (useful for ants)
-        return tiles[(int) pos.x, (int) pos.y];
+        Vector2Int tilePos = GetTilePosition(pos);
+
+        return tiles[tilePos.x, tilePos.y];
+    }
+
+    // Returns integer tile position coordinates given floating point position coordinates
+    public Vector2Int GetTilePosition(Vector2 pos)
+    {
+        // "0.5f" offset is used to prevent indexOutOfBounds error in case ants go slightly over boundary
+        int x = (int)Mathf.Clamp(pos.x, 0.5f, maxColumns - 0.5f);
+        int y = (int)Mathf.Clamp(pos.y, 0.5f, maxRows - 0.5f);
+
+        return new Vector2Int(x, y);
     }
 }

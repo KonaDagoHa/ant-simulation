@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Nest : MonoBehaviour
+public class Food : MonoBehaviour
 {
     private SimulationManager manager;
 
@@ -13,6 +13,6 @@ public class Nest : MonoBehaviour
         manager = GetComponentInParent<SimulationManager>();
         transform.position = new Vector3(Random.Range(1f, manager.maxColumns - 1f), Random.Range(1f, manager.maxRows - 1f));
         currentTile = manager.GetTile(transform.position);
-        currentTile.AddNest(this);
+        currentTile.AddFood(this);
     }
 }

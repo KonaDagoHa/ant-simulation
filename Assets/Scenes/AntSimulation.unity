@@ -295,5 +295,33 @@ PrefabInstance:
       propertyPath: antPopulation
       value: 500
       objectReference: {fileID: 0}
+    - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
+        type: 3}
+      propertyPath: boundaryTilePrefab
+      value: 
+      objectReference: {fileID: 181214650225930934, guid: 38818d120f13e4f22b0bd6749038c6d5,
+        type: 3}
+    - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
+        type: 3}
+      propertyPath: maxColumns
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
+        type: 3}
+      propertyPath: maxRows
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
+        type: 3}
+      propertyPath: boundaryWallPrefab
+      value: 
+      objectReference: {fileID: 7212769829105208634, guid: 26bcce20be42141ea86324057c254352,
+        type: 3}
+    - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
+        type: 3}
+      propertyPath: foodPrefab
+      value: 
+      objectReference: {fileID: 7357728219701795146, guid: bdc89cd1eee3345b497d6dd801ee6153,
+        type: 3}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c1f15157a7e3248b88760763536dfbed, type: 3}

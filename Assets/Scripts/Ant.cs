@@ -13,15 +13,8 @@ public class Ant : MonoBehaviour
     }
     private enum Motion // motion states
     {
-        // Change to stop, move, collect, deposit, avoid, escape if you want a different animation for each state
-
-        stop,
-        move,
-
-        // get rid of these two
-        //interactEnvironment, // involves stopping for certain time period
-        //interactNeighbors, // does NOT involve stopping for certain time period
-        
+        stopping,
+        moving,
     }
 
     private SimulationManager manager;
@@ -39,12 +32,12 @@ public class Ant : MonoBehaviour
 
 
     private Info info = Info.nothing;
-    private Motion motion = Motion.move;
+    private Motion motion = Motion.moving;
     private Tile currentTile; // Reference to the current tile the ant is on
 
     // These two variables may not be needed
-    private Vector2 position; // Use this to cache transform.position in Start() if referred to repeatedly
-    private Vector2 orientation; // Use this to cache transform.eulerAngles if referred to repeated
+    private Vector2 currentPosition; // Use this to cache transform.position in Start() if referred to repeatedly
+    private Vector2 currentOrientation; // Use this to cache transform.eulerAngles if referred to repeatedly
 
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
     private float orientationWeight = 1f; // used to modify target orientation
@@ -53,33 +46,54 @@ public class Ant : MonoBehaviour
     private void Start()
     {
         manager = GetComponentInParent<SimulationManager>();
-        // Assign ant random orientation by setting its z-rotation number between 0 and 360 degrees
+        // Initialize position
+        currentPosition = new Vector2(Random.Range(0.5f, manager.maxColumns - 0.5f), Random.Range(0.5f, manager.maxRows - 0.5f));
+        transform.position = currentPosition;
+
+        // Initialize orientation by setting its z-rotation to random number between 0 and 360 degrees
         transform.eulerAngles = new Vector3(0, 0, Random.Range(0f, 360f));
-        currentTile = manager.GetTile(transform.position);
+        // Add ant to tile
+        currentTile = manager.GetTile(currentPosition);
         currentTile.AddAnt(this);
     }
 
     private void Update()
     {
+        UpdateTile();
+        currentPosition = transform.position;
+        currentOrientation = transform.eulerAngles;
         DetermineMotion();
         ExecuteMotion();
 
         
     }
 
-
-
+    // Updates the ant's current tile
+    private void UpdateTile()
+    {
+        // If ant is on a different tile than the one in the previous timestep
+        if (manager.GetTilePosition(currentPosition) != manager.GetTilePosition(transform.position)) 
+        {
+            // currentPosition is the previous position, and transform.position is the current position
+            currentTile.RemoveAnt(this); // Remove ant from previous tile
+            currentTile = manager.GetTile(currentPosition); // Update currentTile to the current tile
+            currentTile.AddAnt(this); // Add ant to the current tile
+        }
+        
+    }
 
     // Called first at beginning of each timestep; determines if ant will stop or move and sets orientation accordingly
     private void DetermineMotion()
     {
-        if (motion == Motion.move) // if ant is moving
+        if (motion == Motion.moving) // if ant is moving
         {
-            if (Random.value <= 0.001) // if small percentage chance, stop
+            if (Random.value <= 0.005) // if small percentage chance, stop
             {
-                motion = Motion.stop;
+                motion = Motion.stopping;
             } else // keep moving, adjust orientation
             {
+
+
                 transform.eulerAngles += new Vector3(0, 0, Random.Range(-maxDeviationAngle, maxDeviationAngle));
             }
             // motion = Motion.stop;
@@ -95,30 +109,20 @@ public class Ant : MonoBehaviour
     // Execute ant's motion based on motion state
     private void ExecuteMotion()
     {
-        // Ants only seem to stop at the beginning of the simulation
-        // yield return new waitforseconds runs only once per simulation; fix this
-        // Try assigning startcoroutine to new variable and invoking stopcoroutine after certain time period
-        // motion needs to be set to move BEFORE starting coroutine so that a new coroutine is not start every single frame
-            // This is why ants stop at the beginning and never stop again; from the start of the simulation, ants call a coroutine every frame
-                // Once the first coroutine called finishes, the ant starts to move. the ant cannot stop again because the following coroutines keep setting motion to move
-            // make a variable to tracks if the ant is currently stopping
 
-        if (motion == Motion.stop && !stopTimerIsRunning)
+        if (motion == Motion.stopping && !stopTimerIsRunning)
         {
             stopTimerIsRunning = true;
             StartCoroutine(StopTimer());
-        } else if (motion == Motion.move)
+        } else if (motion == Motion.moving)
         {
+
+
             // vector that points in ant's forward direction; the "+ 90" is needed to reorient ant's sprite to point in same direction as direction of movement
             Vector2 moveVector = new Vector2(Mathf.Cos((transform.eulerAngles.z + 90) * Mathf.Deg2Rad), Mathf.Sin((transform.eulerAngles.z + 90) * Mathf.Deg2Rad));
             moveVector = Vector2.ClampMagnitude(moveVector, moveSpeed * Time.deltaTime);
             transform.position += (Vector3) moveVector; // Move forward
         }
-
-        // Restrict ant's position so that it doesn't go off the grid
-        float posX = Mathf.Clamp(transform.position.x, 0, manager.maxColumns);
-        float posY = Mathf.Clamp(transform.position.y, 0, manager.maxRows);
-        transform.position = new Vector2(posX, posY);
 
     }
 
@@ -126,7 +130,7 @@ public class Ant : MonoBehaviour
     private IEnumerator StopTimer()
     {
         yield return new WaitForSeconds(stopTimeLength);
-        motion = Motion.move;
+        motion = Motion.moving;
         stopTimerIsRunning = false;
     }
 
@@ -207,7 +211,7 @@ public class Ant : MonoBehaviour
     }
 
     // Checks if ant's collider2d is touching a food or nest's collider2d and sets motion state accordingly
-    private void CheckStopMotion()
+    private void InteractFood()
     {
         // Collider2d between ants and food/nest cannot have physics for this to work (ants can overlap food/nest)
 
@@ -215,6 +219,11 @@ public class Ant : MonoBehaviour
             // motion = Motion.stop;
         // else if touching nest and info == Info.food
             // motion = Motion.stop;
+    }
+
+    private void InteractNest()
+    {
+
     }
 
     // Check for collisions with neighbor ants and grid boundaries
