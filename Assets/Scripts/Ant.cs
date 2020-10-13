@@ -20,6 +20,7 @@ public class Ant : MonoBehaviour
 
     private SimulationManager manager;
     private Collider2D collider2d;
+    private Collider2D detectionRange; // Used as a trigger to check if any entities have entered range; use this instead of storing entities in tiles
 
 
 
