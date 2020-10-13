@@ -12,7 +12,7 @@ public class Obstacle : MonoBehaviour
     {
         manager = GetComponentInParent<SimulationManager>();
         collider2d = GetComponent<Collider2D>();
-        transform.position = new Vector3(Random.Range(1f, manager.maxColumns - 1f), Random.Range(1f, manager.maxRows - 1f));
+        transform.position = new Vector2(Random.Range(1f, manager.ColumnCount - 1f), Random.Range(1f, manager.RowCount - 1f));
         currentTile = manager.GetTile(transform.position);
         currentTile.AddObstacle(this);
     }

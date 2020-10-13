@@ -59,7 +59,7 @@ public class Ant : MonoBehaviour
         manager = GetComponentInParent<SimulationManager>();
         collider2d = GetComponent<Collider2D>();
         // Initialize position
-        transform.position = new Vector2(Random.Range(0.5f, manager.maxColumns - 0.5f), Random.Range(0.5f, manager.maxRows - 0.5f));
+        transform.position = new Vector2(Random.Range(0.5f, manager.ColumnCount - 0.5f), Random.Range(0.5f, manager.RowCount - 0.5f));
         previousPosition = currentPosition = transform.position;
 
         // Initialize rotation by setting its component to random number between -180 and 180 degrees
@@ -105,7 +105,7 @@ public class Ant : MonoBehaviour
     {
         if (motion == Motion.moving) // if ant is moving
         {
-            if (Random.value <= 0.005) // if small percentage chance
+            if (Random.value <= 0.003) // if small percentage chance
             {
                 motion = Motion.stopping; // stop
             }
@@ -129,9 +129,9 @@ public class Ant : MonoBehaviour
         }
         else if (motion == Motion.moving)
         {
-            Vector2 moveVector = SimulationManager.RotationZToOrientation(currentRotationZ);
-            moveVector = Vector2.ClampMagnitude(moveVector, moveSpeed * Time.deltaTime);
-            currentPosition += moveVector; // Move forward
+            Vector2 velocity = SimulationManager.RotationZToOrientation(currentRotationZ);
+            velocity = Vector2.ClampMagnitude(velocity, moveSpeed);
+            currentPosition += velocity * Time.deltaTime; // Move forward
         }
 
         transform.position = currentPosition;
@@ -189,7 +189,7 @@ public class Ant : MonoBehaviour
 
             // *** Check for environmental interactions ***
 
-            InteractObstacles();
+            //InteractObstacles();
             
                 // for each obstacle
                     // find the obstacle that is closest to ant's position
@@ -247,18 +247,15 @@ public class Ant : MonoBehaviour
     private void InteractObstacles()
     {
         List<Obstacle> totalObstacles = currentTile.GetObstacles(); // add obstacles of current tile to totalObstacles
-        for (int i = 0; i < neighborTiles.Length; i++) // For each neighboring tile
-        {
-            neighborTiles[i].GetObstacles().ForEach(obstacle => totalObstacles.Add(obstacle)); // add obstacles of tile to totalObstacles
-        }
+        
         if (totalObstacles.Count > 0) // if there are 1 or more obstacles
         {
             Obstacle closestObstacle = totalObstacles[0];
-            Vector2 vectorObstacleToAnt = transform.position - closestObstacle.transform.position;
+            Vector2 vectorAntToObstacle = closestObstacle.transform.position - transform.position;
 
             if (totalObstacles.Count > 1) // if there are 2 or more obstacles
             {
-                float distanceToClosestObstacle = vectorObstacleToAnt.magnitude;
+                float distanceToClosestObstacle = vectorAntToObstacle.magnitude;
                 float distance; // Temporary distance for Vector2 calculation
 
                 for (int i = 1; i < totalObstacles.Count; i++) // find and assign closest obstacle to closestObstacle
@@ -272,17 +269,25 @@ public class Ant : MonoBehaviour
                     }
                 }
 
-                vectorObstacleToAnt = transform.position - closestObstacle.transform.position;
+                vectorAntToObstacle = transform.position - closestObstacle.transform.position;
             }
 
-            Vector2 normalVectorObstacleToAnt = Vector2.Perpendicular(vectorObstacleToAnt);
-            if (Random.Range(0, 2) == 0) // 50/50 chance for normal vector to go left or right
+            // Ant will move perpendicular to the vector from ant to obstacle
+            // Ant will move in the perpendicular direction closest to its previous rotation
+
+            Vector2 normalVectorObstacleToAnt = Vector2.Perpendicular(vectorAntToObstacle);
+            Vector2 normalVectorObstacleToAntOpposite = normalVectorObstacleToAnt * -1;
+            Vector2 orientation = SimulationManager.RotationZToOrientation(currentRotationZ);
+
+            if (Vector2.Distance(orientation, normalVectorObstacleToAnt) < Vector2.Distance(orientation, normalVectorObstacleToAntOpposite))
             {
-                normalVectorObstacleToAnt *= -1;
+                currentRotationZ = SimulationManager.OrientationToRotationZ(normalVectorObstacleToAnt);
+            }
+            else
+            {
+                currentRotationZ = SimulationManager.OrientationToRotationZ(normalVectorObstacleToAntOpposite);
             }
 
-            // Reassign currentRotationZ
-            currentRotationZ = SimulationManager.OrientationToRotationZ(normalVectorObstacleToAnt);
         }
     }
 

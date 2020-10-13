@@ -7,85 +7,107 @@ using UnityEngine;
 public class SimulationManager : MonoBehaviour
 {
     // Prefabs
-    public GameObject tilePrefab, nestPrefab, foodPrefab, obstaclePrefab, antPrefab, boundaryWallPrefab;
+    [SerializeField] private GameObject tilePrefab, nestPrefab, foodPrefab, obstaclePrefab, antPrefab, boundaryWallPrefab;
 
-    // Tiles
-    private Tile[,] tiles;
-    public int maxRows, maxColumns;
+    // Grid
+    private Tile[,] tileGrid;
+    [SerializeField] [Range(4, 10)] private int rowCount = 10;
+    [SerializeField] [Range(4, 10)] private int columnCount = 10;
 
     // Ants
-    private Ant[] ants;
-    public int antPopulation;
+    [SerializeField] [Range(0, 500)] private int antCount;
+
+    // Getters
+    public int RowCount => rowCount;
+    public int ColumnCount => columnCount;
+    public int AntCount => antCount;
 
     private void Awake()
     {
-        tiles = new Tile[maxColumns, maxRows];
-        ants = new Ant[antPopulation];
+        tileGrid = new Tile[ColumnCount, RowCount];
 
-        CreateGrid();
-        CreateBoundary();
-        CreateNest();
-        CreateFood();
-        CreateObstacles();
-        CreateAnts();
+        InitTiles();
+        InitBoundaries();
+        InitNests();
+        InitFoods();
+        InitObstacles();
+        InitAnts();
     }
 
-    // Create a grid of tiles
-    private void CreateGrid()
+    // Initialize grid with tiles
+    private void InitTiles()
     {
-        for (int x = 0; x < maxColumns; x++)
+        for (int x = 0; x < ColumnCount; x++)
         {
-            for (int y = 0; y < maxRows; y++)
+            for (int y = 0; y < RowCount; y++)
             {
                 GameObject newTile = Instantiate(tilePrefab, transform);
                 newTile.transform.position = new Vector2(x, y);
-                tiles[x, y] = newTile.GetComponent<Tile>();
+                tileGrid[x, y] = newTile.GetComponent<Tile>();
             }
         }
     }
 
     // Create an invisible boundary around the tile grid (prevents ants from moving off grid)
-    private void CreateBoundary()
+    private void InitBoundaries()
     {
         GameObject topWall = Instantiate(boundaryWallPrefab, transform);
-        topWall.transform.localScale = new Vector2(maxColumns + 2, 1);
-        topWall.transform.position = new Vector2(-1, maxRows);
+        topWall.transform.localScale = new Vector2(ColumnCount + 2, 1);
+        topWall.transform.position = new Vector2(-1, RowCount);
 
         GameObject rightWall = Instantiate(boundaryWallPrefab, transform);
-        rightWall.transform.localScale = new Vector2(1, maxRows + 2);
-        rightWall.transform.position = new Vector2(maxColumns, -1);
+        rightWall.transform.localScale = new Vector2(1, RowCount + 2);
+        rightWall.transform.position = new Vector2(ColumnCount, -1);
 
         GameObject bottomWall = Instantiate(boundaryWallPrefab, transform);
-        bottomWall.transform.localScale = new Vector2(maxColumns + 2, 1);
+        bottomWall.transform.localScale = new Vector2(ColumnCount + 2, 1);
         bottomWall.transform.position = new Vector2(-1, -1);
 
         GameObject leftWall = Instantiate(boundaryWallPrefab, transform);
-        leftWall.transform.localScale = new Vector2(1, maxRows + 2);
+        leftWall.transform.localScale = new Vector2(1, RowCount + 2);
         leftWall.transform.position = new Vector2(-1, -1);
+
+        // Corner pieces (prevents ants from getting stuck in corner)
+        GameObject topLeft = Instantiate(boundaryWallPrefab, transform);
+        topLeft.transform.eulerAngles = new Vector3(0, 0, 45);
+        topLeft.transform.position = new Vector2(0f, RowCount - 0.05f);
+
+        GameObject topRight = Instantiate(boundaryWallPrefab, transform);
+        topRight.transform.eulerAngles = new Vector3(0, 0, -45);
+        topRight.transform.position = new Vector2(ColumnCount - 0.05f, RowCount);
+
+        GameObject bottomRight = Instantiate(boundaryWallPrefab, transform);
+        bottomRight.transform.eulerAngles = new Vector3(0, 0, -135);
+        bottomRight.transform.position = new Vector2(ColumnCount, 0.05f);
+
+        GameObject bottomLeft = Instantiate(boundaryWallPrefab, transform);
+        bottomLeft.transform.eulerAngles = new Vector3(0, 0, 135);
+        bottomLeft.transform.position = new Vector2(0.05f, 0f);
     }
 
-    private void CreateNest()
+    private void InitNests()
     {
         Instantiate(nestPrefab, transform);
 
     }
 
-    private void CreateFood()
+    private void InitFoods()
     {
         Instantiate(foodPrefab, transform);
     }
 
-    private void CreateObstacles()
+    private void InitObstacles()
     {
+        Instantiate(obstaclePrefab, transform);
+        Instantiate(obstaclePrefab, transform);
         Instantiate(obstaclePrefab, transform);
     }
 
-    private void CreateAnts()
+    private void InitAnts()
     {
-        for (int i = 0; i < antPopulation; i++)
+        for (int i = 0; i < AntCount; i++)
         {
             GameObject newAnt = Instantiate(antPrefab, transform);
-            ants[i] = newAnt.GetComponent<Ant>();
         }
     }
 
@@ -94,16 +116,16 @@ public class SimulationManager : MonoBehaviour
     {
         Vector2Int tilePos = GetTilePosition(pos);
 
-        return tiles[tilePos.x, tilePos.y];
+        return tileGrid[tilePos.x, tilePos.y];
     }
 
     // Returns integer tile position coordinates given floating point position coordinates
     public Vector2Int GetTilePosition(Vector2 pos)
     {
         // "0.5f" offset is used to prevent indexOutOfBounds error in case ants go slightly over boundary
-        int x = (int)Mathf.Clamp(pos.x, 0.5f, maxColumns - 0.5f);
-        int y = (int)Mathf.Clamp(pos.y, 0.5f, maxRows - 0.5f);
-
+        int x = (int)Mathf.Clamp(pos.x, 0.5f, ColumnCount - 0.5f);
+        int y = (int)Mathf.Clamp(pos.y, 0.5f, RowCount - 0.5f);
+        
         return new Vector2Int(x, y);
     }
 

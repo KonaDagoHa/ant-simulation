@@ -69,8 +69,8 @@ public class Tile : MonoBehaviour
         for (int i = 0; i < neighborPos.Length; i++)
         {
             // If neighbor is within grid boundaries, add to neighborList
-            if (neighborPos[i].x > -1 && neighborPos[i].x < manager.maxColumns &&
-                neighborPos[i].y > -1 && neighborPos[i].y < manager.maxRows)
+            if (neighborPos[i].x > -1 && neighborPos[i].x < manager.ColumnCount &&
+                neighborPos[i].y > -1 && neighborPos[i].y < manager.RowCount)
             {
                 neighborList.Add(manager.GetTile(neighborPos[i]));
             }
