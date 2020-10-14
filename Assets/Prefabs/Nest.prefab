@@ -10,8 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 4317630376681147258}
   - component: {fileID: 2003874506969578450}
-  - component: {fileID: 2559349402276897385}
+  - component: {fileID: -289857746949311704}
   - component: {fileID: 8818325022880858049}
+  - component: {fileID: 2559349402276897385}
   m_Layer: 0
   m_Name: Nest
   m_TagString: Untagged
@@ -83,18 +84,27 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
---- !u!114 &2559349402276897385
-MonoBehaviour:
+--- !u!50 &-289857746949311704
+Rigidbody2D:
+  serializedVersion: 4
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6092471596650491562}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f89e2f0de1a1e4034962a53bc59853ef, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
+  m_BodyType: 2
+  m_Simulated: 1
+  m_UseFullKinematicContacts: 0
+  m_UseAutoMass: 0
+  m_Mass: 1
+  m_LinearDrag: 0
+  m_AngularDrag: 0.05
+  m_GravityScale: 1
+  m_Material: {fileID: 0}
+  m_Interpolate: 0
+  m_SleepingMode: 1
+  m_CollisionDetection: 0
+  m_Constraints: 0
 --- !u!58 &8818325022880858049
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -111,3 +121,15 @@ CircleCollider2D:
   m_Offset: {x: 0, y: 0.18}
   serializedVersion: 2
   m_Radius: 0.2
+--- !u!114 &2559349402276897385
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6092471596650491562}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f89e2f0de1a1e4034962a53bc59853ef, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

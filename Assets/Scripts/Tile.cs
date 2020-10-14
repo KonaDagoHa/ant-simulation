@@ -33,7 +33,7 @@ public class Tile : MonoBehaviour
     public Tile[] GetNeighbors() { return neighbors; }
     public List<Obstacle> GetObstacles() { return obstacles; }
 
-    private void Start()
+    private void Awake()
     {
         manager = GetComponentInParent<SimulationManager>();
         ants = new List<Ant>();
@@ -41,7 +41,10 @@ public class Tile : MonoBehaviour
         foods = new List<Food>();
         obstacles = new List<Obstacle>();
         disturbances = new List<Disturbance>();
+    }
 
+    private void Start()
+    {
         neighbors = InitNeighbors();
     }
 
@@ -79,5 +82,6 @@ public class Tile : MonoBehaviour
         return neighborList.ToArray();
 
     }
+
     
 }

@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+// TODO: get rid of dynamic rigidbodies, control ant behavior through overlapcircle and adjust collisions at end of frame
+
 
 [RequireComponent(typeof(CapsuleCollider2D), typeof(Rigidbody2D))]
 public class Ant : MonoBehaviour
@@ -22,9 +24,12 @@ public class Ant : MonoBehaviour
     private CapsuleCollider2D antCollider; // main collider to be detected by other ants
     private Rigidbody2D antBody; // Kinematic rigidbody for moving ants
 
-    private float maxDeviationAngle = 5f; // Maximum turning angle of new orientations
-    private float moveSpeed = 0.5f; // Movement speed
-    private float stopTimeLength = 1f; // in seconds
+    private float maxDeviationAngle = 20f; // Maximum turning angle of new orientations
+    private float moveSpeed = 0.1f; // Movement speed
+
+    // Timers for coroutines (in seconds)
+    private float stopTimeLength = 1f; // how long ants should stop for
+    private float determineMotionInterval = 0.1f; // time interval for running DetermineMotion()
 
     private Info info = Info.nothing;
     private Motion motion = Motion.moving;
@@ -34,14 +39,15 @@ public class Ant : MonoBehaviour
         // Rotation is ant's rotation in Vector3(x, y, z) corresponding with transform.eulerAngles (x and y are always 0)
         // Orientation is ant's forward facing unit vector in Vector2(x, y) calculated based on its rotation
 
-    private Vector2 previousPosition; // position at the beginning of the previous frame
-    public Vector2 CurrentPosition { get; set; } // assign to transform.position at end of frame
-    private float CurrentRotationZ { get; set; } // assign to transform.eulerAngles.z at end of frame
+    private Vector2 currentPosition; // assign to transform.position at end of frame
+    private float currentRotationZ; // assign to transform.eulerAngles.z at end of frame
 
+    private Vector2 previousPosition; // position at the beginning of the previous frame
+    private float stopChance = 0.001f;
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
     private bool interactingWithFoodOrNest = false; // used to reassign motion state after interaction
     private float orientationWeight = 1f; // used to modify target orientation
-    private float repulsionWeight = 1f; // used to affect the orientation of other ants in range
+    private float repulsionWeight = 0.1f; // used to affect the orientation of other ants in range
 
     private void Awake()
     {
@@ -55,103 +61,125 @@ public class Ant : MonoBehaviour
     {
         // Initialize position
         transform.position = new Vector2(Random.Range(0.5f, manager.ColumnCount - 0.5f), Random.Range(0.5f, manager.RowCount - 0.5f));
-        previousPosition = CurrentPosition = transform.position;
+        previousPosition = currentPosition = transform.position;
 
         // Initialize rotation by setting its component to random number between -180 and 180 degrees
         transform.eulerAngles = new Vector3(0, 0, Random.Range(-180f, 180f));
         currentRotationZ = transform.eulerAngles.z;
+
+        // Start motion determination coroutine
+        StartCoroutine(DetermineMotion());
+
+        // Start stopping coroutine
+        StartCoroutine(StopTimer());
+
+        
     }
 
     private void Update()
     {
-        
-        previousPosition = CurrentPosition = transform.position;
-        currentRotationZ = transform.eulerAngles.z;
-        DetermineMotion();
+        // ExecuteMotion should logically be at the end of Update(), but since coroutines run after Update(), it has to be called first
         ExecuteMotion();
-
+        previousPosition = currentPosition = transform.position;
+        currentRotationZ = transform.eulerAngles.z;
         
     }
-
-    // Called first at beginning of each timestep; determines if ant will stop or move and sets orientation accordingly
-    private void DetermineMotion()
-    {
-        if (motion == Motion.moving) // if ant is moving
-        {
-            if (Random.value <= 0.003) // if small percentage chance
-            {
-                motion = Motion.stopping; // stop
-            }
-            else // keep moving
-            {
-                currentRotationZ += Random.Range(-maxDeviationAngle, maxDeviationAngle); // adjust rotation
-                CheckInteractions();
-                // Call CheckCollisions()
-            }
-        }
-    }
-
+    
     // Execute ant's motion based on motion state
     private void ExecuteMotion()
     {
 
         if (motion == Motion.stopping && !stopTimerIsRunning)
         {
-            stopTimerIsRunning = true;
-            StartCoroutine(StopTimer());
+            stopTimerIsRunning = true; // start stop timer coroutine by setting this to true
         }
         else if (motion == Motion.moving)
         {
-            // TODO: use rigidbody2d's moveposition and rotation functions for optimal performance
             Vector2 velocity = SimulationManager.RotationZToOrientation(currentRotationZ);
             velocity = Vector2.ClampMagnitude(velocity, moveSpeed);
-            CurrentPosition += velocity * Time.deltaTime; // Move forward
+            currentPosition += velocity * Time.deltaTime; // Move forward
+            //antBody.velocity = velocity; // use velocity setting position (prevent glitching)
+            antBody.MovePosition(currentPosition);
+            antBody.MoveRotation(currentRotationZ);
+            //transform.position = currentPosition;
+            //transform.eulerAngles = new Vector3(0, 0, currentRotationZ);
         }
 
-        transform.position = CurrentPosition;
-        transform.eulerAngles = new Vector3(0, 0, currentRotationZ); 
+        //antBody.MovePosition(currentPosition);
+
+        //transform.position = currentPosition;
+        //transform.eulerAngles = new Vector3(0, 0, currentRotationZ);
+    }
+
+    // Called first at beginning of each timestep; determines if ant will stop or move and sets orientation accordingly
+    private IEnumerator DetermineMotion()
+    {
+        while (true)
+        {
+            yield return new WaitForSeconds(determineMotionInterval); // Runs every determineMotionInterval seconds
+
+            if (motion == Motion.moving) // if ant is moving
+            {
+                if (Random.value <= stopChance) // if small percentage chance
+                {
+                    motion = Motion.stopping; // stop
+                }
+                else // keep moving
+                {
+                    currentRotationZ += Random.Range(-maxDeviationAngle, maxDeviationAngle); // adjust rotation
+                }
+            }
+        }
     }
 
     // Stop for certain time period
     private IEnumerator StopTimer()
     {
-        yield return new WaitForSeconds(stopTimeLength);
-        motion = Motion.moving;
-        stopTimerIsRunning = false;
-
-        // For stopping to interact with food/nest
-        if (interactingWithFoodOrNest)
+        while (true)
         {
-            interactingWithFoodOrNest = false;
-            if (info == Info.nest || info == Info.nothing)
-            {
-                info = Info.food;
+            // check if ant should be stopping
+            if (motion == Motion.stopping && stopTimerIsRunning)
+            { 
+                yield return new WaitForSeconds(stopTimeLength);
+                motion = Motion.moving;
+                stopTimerIsRunning = false;
+
+                // For stopping to interact with food/nest
+                if (interactingWithFoodOrNest)
+                {
+                    interactingWithFoodOrNest = false;
+                    if (info == Info.nest || info == Info.nothing)
+                    {
+                        info = Info.food;
+                    }
+                    else if (info == Info.food)
+                    {
+                        info = Info.nest;
+                    }
+                }
+
             }
-            else if (info == Info.food)
-            {
-                info = Info.nest;
-            }
+            yield return null; // Runs every frame
         }
     }
-
 
     // Check current and neighboring tiles for possible interactions and adjust orientation accordingly
     private void CheckInteractions()
     {
         // Only disturbances can interrupt ant stopping
         // TODO: Also need to check if the closest entity for each type of interaction (obstacles, disturbances, nests, food, neighboring ants) ...
-            // if within a certain distance range
-            // Ex: Ant has detectionRange of 0.5, so even if there was an obstacle inside an eastern neighboring tile, ant cannot detect it unless ...
-                // the obstacle's position is within a circle with radius 0.5 centered on the ant
-            // If this overcomplicates things, don't do it
+        // if within a certain distance range
+        // Ex: Ant has detectionRange of 0.5, so even if there was an obstacle inside an eastern neighboring tile, ant cannot detect it unless ...
+        // the obstacle's position is within a circle with radius 0.5 centered on the ant
+        // If this overcomplicates things, don't do it
 
         // TODO: make variables to store previous position of each ant (needed for finding the new orientation of ant after information transform between ants
-            // See *** Check for neighbor interactions *** for details
+        // See *** Check for neighbor interactions *** for details
 
         // when ant stops at food/nest, the ant's info only changes to food/nest respectively AFTER the timer for stopping runs out (when the ant is no longer stopping)
 
         // TODO: make a Vector2 orientationVector instead of using transform.eulerAngles
-            // Convert orientationVector to transform.eulerAngles at end of frame
+        // Convert orientationVector to transform.eulerAngles at end of frame
 
         if (motion == Motion.moving)
         {
@@ -164,63 +192,63 @@ public class Ant : MonoBehaviour
             // *** Check for environmental interactions ***
 
             //InteractObstacles();
-            
-                // for each obstacle
-                    // find the obstacle that is closest to ant's position
-                    // set ant's orientation to be perpendicular to the vector pointing from ant to obstacle (50/50 chance for left/right)
+
+            // for each obstacle
+            // find the obstacle that is closest to ant's position
+            // set ant's orientation to be perpendicular to the vector pointing from ant to obstacle (50/50 chance for left/right)
 
             // else if current or neighbor tiles have a disturbance
-                // for each disturbance in current or neighboring tiles
-                    // find the closest disturbance
-                    // set ant's orientation to be opposite to the vector pointing from ant to disturbance
+            // for each disturbance in current or neighboring tiles
+            // find the closest disturbance
+            // set ant's orientation to be opposite to the vector pointing from ant to disturbance
 
             // else if current or neighboring tiles have a nest
-                // for each nest
-                    // find closest nest
-                    // if info == Info.food
-                        // Adjust orientation to point toward nest
-                        // info = Info.nest
-                    // else if info == Info.nothing
-                        // info = Info.nest (ant does not stop to interact)
+            // for each nest
+            // find closest nest
+            // if info == Info.food
+            // Adjust orientation to point toward nest
+            // info = Info.nest
+            // else if info == Info.nothing
+            // info = Info.nest (ant does not stop to interact)
 
             // else if current or neighboring tiles have a food source
-                // for each food source
-                    // find closest food source
-                    // if info == Info.nest or info == Info.nothing
-                        // adjust orientation to point toward food
-                        // info = Info.food
-               
+            // for each food source
+            // find closest food source
+            // if info == Info.nest or info == Info.nothing
+            // adjust orientation to point toward food
+            // info = Info.food
+
             // *** Check for neighbor interactions ***
 
             // if current tile has neighbor ants (not neighboring tile because these ants communicate through physical contact)
-                // for each neighbor ant in current or neighboring tiles (if there are any)
-                    // if info == Info.nest or info == Info.nothing
-                        // if neighborAnt.info == Info.food
-                            // Change orientation to move toward food
-                                // Do this by pointing the orientation toward the neighborAnt's previous
-                                // This means we have to calculate and store previous positions for each ant
-                    // else if int == info.food
-                        // if neighborAnt.info == Info.nest
-                            // Change orientation to move toward nest
+            // for each neighbor ant in current or neighboring tiles (if there are any)
+            // if info == Info.nest or info == Info.nothing
+            // if neighborAnt.info == Info.food
+            // Change orientation to move toward food
+            // Do this by pointing the orientation toward the neighborAnt's previous
+            // This means we have to calculate and store previous positions for each ant
+            // else if int == info.food
+            // if neighborAnt.info == Info.nest
+            // Change orientation to move toward nest
         }
 
         // else (Ant is currently stopping)
 
-            // if current or neighboring tiles have a disturbance
-                // motion = Motion.move;
-                // for each disturbance in current or neighboring tiles
-                    //
+        // if current or neighboring tiles have a disturbance
+        // motion = Motion.move;
+        // for each disturbance in current or neighboring tiles
+        //
 
 
-        
+
 
     }
-
+    /*
     // Ants change their orientation to be perpendicular to the vector pointing from ant to obstacle (50/50 chance for left/right)
     // TODO: Make it so ant's only check for obstacles within a certain circular range
     private void InteractObstacles()
     {
-        /*
+        
         List<Obstacle> totalObstacles = currentTile.GetObstacles(); // add obstacles of current tile to totalObstacles
         
         if (totalObstacles.Count > 0) // if there are 1 or more obstacles
@@ -264,8 +292,9 @@ public class Ant : MonoBehaviour
             }
 
         }
-        */
+        
     }
+
 
     // TODO: ant should orient itself toward the food/nest before stopping
 
@@ -307,5 +336,6 @@ public class Ant : MonoBehaviour
     // OR just make it so ants can't collide with other ants (Plan B)
     // To make ants collide, add Collider2D and Rigidbody2D components to Ant prefab
     // Add Collider2D to Food and Nest prefab, but make sure to check "is trigger" since ants will need to go through food and nest
-        // Maybe experiment on whether ants can go through food or nest
+    // Maybe experiment on whether ants can go through food or nest
+    */
 }
