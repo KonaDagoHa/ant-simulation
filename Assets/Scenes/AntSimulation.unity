@@ -332,17 +332,17 @@ PrefabInstance:
     - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
         type: 3}
       propertyPath: columnCount
-      value: 5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
         type: 3}
       propertyPath: rowCount
-      value: 5
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
         type: 3}
       propertyPath: antCount
-      value: 500
+      value: 5
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c1f15157a7e3248b88760763536dfbed, type: 3}

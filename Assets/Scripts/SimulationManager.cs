@@ -11,11 +11,14 @@ public class SimulationManager : MonoBehaviour
 
     // Grid
     private Tile[,] tileGrid;
-    [SerializeField] [Range(4, 10)] private int rowCount = 10;
-    [SerializeField] [Range(4, 10)] private int columnCount = 10;
+    [SerializeField]
+    private int rowCount = 10;
+    [SerializeField]
+    private int columnCount = 10;
 
     // Ants
-    [SerializeField] [Range(0, 500)] private int antCount;
+    [SerializeField]
+    private int antCount;
 
     // Getters
     public int RowCount => rowCount;

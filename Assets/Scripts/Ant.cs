@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// Attach this script to ant prefab
-[RequireComponent(typeof(Collider2D))]
+
+[RequireComponent(typeof(CapsuleCollider2D), typeof(Rigidbody2D))]
 public class Ant : MonoBehaviour
 {
     private enum Info // Info to transferred to other ants
@@ -19,27 +19,15 @@ public class Ant : MonoBehaviour
     }
 
     private SimulationManager manager;
-    private Collider2D collider2d;
-    private Collider2D detectionRange; // Used as a trigger to check if any entities have entered range; use this instead of storing entities in tiles
+    private CapsuleCollider2D antCollider; // main collider to be detected by other ants
+    private Rigidbody2D antBody; // Kinematic rigidbody for moving ants
 
-
-
-    //[SerializeField]
     private float maxDeviationAngle = 5f; // Maximum turning angle of new orientations
-    //[SerializeField]
-    //[Range(0, 1)]
     private float moveSpeed = 0.5f; // Movement speed
-    //[SerializeField]
-    //[Range(0, 5)]
     private float stopTimeLength = 1f; // in seconds
-
-
-
 
     private Info info = Info.nothing;
     private Motion motion = Motion.moving;
-    private Tile currentTile; // Reference to the current tile the ant is on
-    private Tile[] neighborTiles;
 
     // Guide:
         // Position is ant's position in Vector2(x, y) corresponding with transform.position
@@ -47,57 +35,41 @@ public class Ant : MonoBehaviour
         // Orientation is ant's forward facing unit vector in Vector2(x, y) calculated based on its rotation
 
     private Vector2 previousPosition; // position at the beginning of the previous frame
-    private Vector2 currentPosition; // assign to transform.position at end of frame
-    private float currentRotationZ; // assign to transform.eulerAngles.z at end of frame
+    public Vector2 CurrentPosition { get; set; } // assign to transform.position at end of frame
+    private float CurrentRotationZ { get; set; } // assign to transform.eulerAngles.z at end of frame
 
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
     private bool interactingWithFoodOrNest = false; // used to reassign motion state after interaction
     private float orientationWeight = 1f; // used to modify target orientation
     private float repulsionWeight = 1f; // used to affect the orientation of other ants in range
 
+    private void Awake()
+    {
+        // Cache components
+        manager = GetComponentInParent<SimulationManager>();
+        antCollider = GetComponent<CapsuleCollider2D>();
+        antBody = GetComponent<Rigidbody2D>();
+    }
+
     private void Start()
     {
-        manager = GetComponentInParent<SimulationManager>();
-        collider2d = GetComponent<Collider2D>();
         // Initialize position
         transform.position = new Vector2(Random.Range(0.5f, manager.ColumnCount - 0.5f), Random.Range(0.5f, manager.RowCount - 0.5f));
-        previousPosition = currentPosition = transform.position;
+        previousPosition = CurrentPosition = transform.position;
 
         // Initialize rotation by setting its component to random number between -180 and 180 degrees
         transform.eulerAngles = new Vector3(0, 0, Random.Range(-180f, 180f));
         currentRotationZ = transform.eulerAngles.z;
-
-        // Add ant to tile
-        currentTile = manager.GetTile(transform.position);
-        currentTile.AddAnt(this);
-
-        // Update neighbor tiles
-        neighborTiles = currentTile.GetNeighbors();
     }
 
     private void Update()
     {
-        UpdateTile();
-        previousPosition = currentPosition = transform.position;
+        
+        previousPosition = CurrentPosition = transform.position;
         currentRotationZ = transform.eulerAngles.z;
         DetermineMotion();
         ExecuteMotion();
 
-        
-    }
-
-    // Updates the ant's current tile
-    private void UpdateTile()
-    {
-        // If ant is on a different tile than the one in the previous timestep,
-            // In other words, if previous tile position is different from current tile position,
-        if (manager.GetTilePosition(previousPosition) != manager.GetTilePosition(transform.position)) 
-        {
-            currentTile.RemoveAnt(this); // Remove ant from previous tile
-            currentTile = manager.GetTile(transform.position); // Update currentTile to the current tile
-            currentTile.AddAnt(this); // Add ant to the current tile
-            neighborTiles = currentTile.GetNeighbors(); // Update neighboring tiles
-        }
         
     }
 
@@ -130,12 +102,13 @@ public class Ant : MonoBehaviour
         }
         else if (motion == Motion.moving)
         {
+            // TODO: use rigidbody2d's moveposition and rotation functions for optimal performance
             Vector2 velocity = SimulationManager.RotationZToOrientation(currentRotationZ);
             velocity = Vector2.ClampMagnitude(velocity, moveSpeed);
-            currentPosition += velocity * Time.deltaTime; // Move forward
+            CurrentPosition += velocity * Time.deltaTime; // Move forward
         }
 
-        transform.position = currentPosition;
+        transform.position = CurrentPosition;
         transform.eulerAngles = new Vector3(0, 0, currentRotationZ); 
     }
 
@@ -247,6 +220,7 @@ public class Ant : MonoBehaviour
     // TODO: Make it so ant's only check for obstacles within a certain circular range
     private void InteractObstacles()
     {
+        /*
         List<Obstacle> totalObstacles = currentTile.GetObstacles(); // add obstacles of current tile to totalObstacles
         
         if (totalObstacles.Count > 0) // if there are 1 or more obstacles
@@ -290,6 +264,7 @@ public class Ant : MonoBehaviour
             }
 
         }
+        */
     }
 
     // TODO: ant should orient itself toward the food/nest before stopping
@@ -297,7 +272,7 @@ public class Ant : MonoBehaviour
     // Checks if ant's collider2d is touching a food or nest's collider2d and sets motion state accordingly
     private void InteractNest(Nest nest)
     {
-        if (collider2d.IsTouching(nest.GetCollider()) && info == Info.food)
+        if (antCollider.IsTouching(nest.GetCollider()) && info == Info.food)
         {
             motion = Motion.stopping;
             interactingWithFoodOrNest = true;
@@ -306,7 +281,7 @@ public class Ant : MonoBehaviour
 
     private void InteractFood(Food food)
     {
-        if (collider2d.IsTouching(food.GetCollider()) && (info == Info.nest || info == Info.nothing))
+        if (antCollider.IsTouching(food.GetCollider()) && (info == Info.nest || info == Info.nothing))
         {
             motion = Motion.stopping;
             interactingWithFoodOrNest = true;
