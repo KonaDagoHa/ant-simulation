@@ -193,5 +193,15 @@ PrefabInstance:
       propertyPath: antCount
       value: 500
       objectReference: {fileID: 0}
+    - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
+        type: 3}
+      propertyPath: rowCount
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 6886978455670276027, guid: c1f15157a7e3248b88760763536dfbed,
+        type: 3}
+      propertyPath: columnCount
+      value: 3
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c1f15157a7e3248b88760763536dfbed, type: 3}

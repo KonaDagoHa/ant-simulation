@@ -5,7 +5,7 @@ using UnityEngine;
 // TODO: get rid of dynamic rigidbodies, control ant behavior through overlapcircle and adjust collisions at end of frame
 
 
-[RequireComponent(typeof(CapsuleCollider2D), typeof(Rigidbody2D))]
+[RequireComponent(typeof(CapsuleCollider2D))]
 public class Ant : MonoBehaviour
 {
     private enum Info // Info to transferred to other ants
@@ -22,14 +22,13 @@ public class Ant : MonoBehaviour
 
     private SimulationManager manager;
     private CapsuleCollider2D antCollider; // main collider to be detected by other ants
-    private Rigidbody2D antBody; // Kinematic rigidbody for moving ants
 
-    private float maxDeviationAngle = 20f; // Maximum turning angle of new orientations
+    private float maxDeviationAngle = 30f; // Maximum turning angle of new orientations
     private float moveSpeed = 0.1f; // Movement speed
 
     // Timers for coroutines (in seconds)
     private float stopTimeLength = 1f; // how long ants should stop for
-    private float determineMotionInterval = 0.1f; // time interval for running DetermineMotion()
+    private float determineMotionInterval = 0.2f; // time interval for running DetermineMotion() (increase for better performance)
 
     private Info info = Info.nothing;
     private Motion motion = Motion.moving;
@@ -43,18 +42,18 @@ public class Ant : MonoBehaviour
     private float currentRotationZ; // assign to transform.eulerAngles.z at end of frame
 
     private Vector2 previousPosition; // position at the beginning of the previous frame
-    private float stopChance = 0.001f;
+    private float stopChance = 0.05f;
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
     private bool interactingWithFoodOrNest = false; // used to reassign motion state after interaction
     private float orientationWeight = 1f; // used to modify target orientation
     private float repulsionWeight = 0.1f; // used to affect the orientation of other ants in range
+    private float detectionRange;
 
     private void Awake()
     {
         // Cache components
         manager = GetComponentInParent<SimulationManager>();
         antCollider = GetComponent<CapsuleCollider2D>();
-        antBody = GetComponent<Rigidbody2D>();
     }
 
     private void Start()
@@ -66,6 +65,8 @@ public class Ant : MonoBehaviour
         // Initialize rotation by setting its component to random number between -180 and 180 degrees
         transform.eulerAngles = new Vector3(0, 0, Random.Range(-180f, 180f));
         currentRotationZ = transform.eulerAngles.z;
+
+        detectionRange = transform.localScale.x * 1.1f;
 
         // Start motion determination coroutine
         StartCoroutine(DetermineMotion());
@@ -80,9 +81,8 @@ public class Ant : MonoBehaviour
     {
         // ExecuteMotion should logically be at the end of Update(), but since coroutines run after Update(), it has to be called first
         ExecuteMotion();
-        previousPosition = currentPosition = transform.position;
-        currentRotationZ = transform.eulerAngles.z;
-        
+        previousPosition = transform.position;
+        // Coroutines run after Update()
     }
     
     // Execute ant's motion based on motion state
@@ -97,18 +97,18 @@ public class Ant : MonoBehaviour
         {
             Vector2 velocity = SimulationManager.RotationZToOrientation(currentRotationZ);
             velocity = Vector2.ClampMagnitude(velocity, moveSpeed);
+
             currentPosition += velocity * Time.deltaTime; // Move forward
-            //antBody.velocity = velocity; // use velocity setting position (prevent glitching)
-            antBody.MovePosition(currentPosition);
-            antBody.MoveRotation(currentRotationZ);
-            //transform.position = currentPosition;
-            //transform.eulerAngles = new Vector3(0, 0, currentRotationZ);
+            // Clamping at boundaries
+            float clampMargins = transform.localScale.x; // used to prevent ants from getting stuck at boundaries
+            float clampX = Mathf.Clamp(currentPosition.x, clampMargins, manager.ColumnCount - clampMargins);
+            float clampY = Mathf.Clamp(currentPosition.y, clampMargins, manager.RowCount - clampMargins);
+            currentPosition = new Vector2(clampX, clampY);
         }
 
-        //antBody.MovePosition(currentPosition);
+        transform.eulerAngles = new Vector3(0, 0, currentRotationZ);
+        transform.position = currentPosition;
 
-        //transform.position = currentPosition;
-        //transform.eulerAngles = new Vector3(0, 0, currentRotationZ);
     }
 
     // Called first at beginning of each timestep; determines if ant will stop or move and sets orientation accordingly
@@ -127,6 +127,7 @@ public class Ant : MonoBehaviour
                 else // keep moving
                 {
                     currentRotationZ += Random.Range(-maxDeviationAngle, maxDeviationAngle); // adjust rotation
+                    CheckInteractions();
                 }
             }
         }
@@ -183,7 +184,20 @@ public class Ant : MonoBehaviour
 
         if (motion == Motion.moving)
         {
+            Collider2D[] collisions = Physics2D.OverlapCircleAll(currentPosition, detectionRange);
 
+            for (int i = 0; i < collisions.Length; i++)
+            {
+                int collisionLayer = collisions[i].gameObject.layer;
+                if (collisionLayer == LayerMask.NameToLayer("Obstacles"))
+                {
+                    AvoidObstacle(collisions[i]);
+                }
+                else if (collisionLayer == LayerMask.NameToLayer("Boundaries"))
+                {
+                    AvoidBoundary(collisions[i]);
+                }
+            }
 
             // Interaction priorities: environment > neighbors
             // Environment priorities: obstacles > disturbances > food = nest
@@ -243,56 +257,32 @@ public class Ant : MonoBehaviour
 
 
     }
-    /*
-    // Ants change their orientation to be perpendicular to the vector pointing from ant to obstacle (50/50 chance for left/right)
-    // TODO: Make it so ant's only check for obstacles within a certain circular range
-    private void InteractObstacles()
+
+    private void AvoidObstacle(Collider2D obstacleCollider)
     {
-        
-        List<Obstacle> totalObstacles = currentTile.GetObstacles(); // add obstacles of current tile to totalObstacles
-        
-        if (totalObstacles.Count > 0) // if there are 1 or more obstacles
+        // Ant will move perpendicular to the vector from ant to obstacle
+        // Ant will move in the direction closest to its previous orientation
+        //Vector2 antToObstacle = (Vector2) obstacleCollider.transform.position - currentPosition;
+        Vector2 antToObstacle = obstacleCollider.ClosestPoint(currentPosition) - currentPosition;
+        Vector2 antToObstaclePerp = Vector2.Perpendicular(antToObstacle);
+        Vector2 antToObstaclePerpOpposite = antToObstaclePerp * -1;
+        Vector2 currentOrientation = SimulationManager.RotationZToOrientation(currentRotationZ);
+
+        if (Vector2.Distance(currentOrientation, antToObstaclePerp) < Vector2.Distance(currentOrientation, antToObstaclePerpOpposite))
         {
-            Obstacle closestObstacle = totalObstacles[0];
-            Vector2 vectorAntToObstacle = closestObstacle.transform.position - transform.position;
-
-            if (totalObstacles.Count > 1) // if there are 2 or more obstacles
-            {
-                float distanceToClosestObstacle = vectorAntToObstacle.magnitude;
-                float distance; // Temporary distance for Vector2 calculation
-
-                for (int i = 1; i < totalObstacles.Count; i++) // find and assign closest obstacle to closestObstacle
-                {
-                    distance = Vector2.Distance(transform.position, totalObstacles[i].transform.position);
-
-                    if (distance < distanceToClosestObstacle)
-                    {
-                        distanceToClosestObstacle = distance;
-                        closestObstacle = totalObstacles[i];
-                    }
-                }
-
-                vectorAntToObstacle = transform.position - closestObstacle.transform.position;
-            }
-
-            // Ant will move perpendicular to the vector from ant to obstacle
-            // Ant will move in the perpendicular direction closest to its previous rotation
-
-            Vector2 normalVectorObstacleToAnt = Vector2.Perpendicular(vectorAntToObstacle);
-            Vector2 normalVectorObstacleToAntOpposite = normalVectorObstacleToAnt * -1;
-            Vector2 orientation = SimulationManager.RotationZToOrientation(currentRotationZ);
-
-            if (Vector2.Distance(orientation, normalVectorObstacleToAnt) < Vector2.Distance(orientation, normalVectorObstacleToAntOpposite))
-            {
-                currentRotationZ = SimulationManager.OrientationToRotationZ(normalVectorObstacleToAnt);
-            }
-            else
-            {
-                currentRotationZ = SimulationManager.OrientationToRotationZ(normalVectorObstacleToAntOpposite);
-            }
-
+            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerp), 15f);
         }
-        
+        else
+        {
+            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerpOpposite), 15f);
+        }
+    }
+
+
+    private void AvoidBoundary(Collider2D boundaryCollider)
+    {
+        Vector2 boundaryToAnt = currentPosition - boundaryCollider.ClosestPoint(currentPosition);
+        currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(boundaryToAnt), 40f);
     }
 
 
@@ -337,5 +327,5 @@ public class Ant : MonoBehaviour
     // To make ants collide, add Collider2D and Rigidbody2D components to Ant prefab
     // Add Collider2D to Food and Nest prefab, but make sure to check "is trigger" since ants will need to go through food and nest
     // Maybe experiment on whether ants can go through food or nest
-    */
+    
 }
