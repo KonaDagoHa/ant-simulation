@@ -42,12 +42,12 @@ public class Ant : MonoBehaviour
     public float currentRotationZ { get; set; } // assign to transform.eulerAngles.z at end of frame
 
     private Vector2 previousPosition; // position at the beginning of the previous frame
-    private float stopChance = 0.05f;
+    private float stopChance = -1;
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
     private bool interactingWithFoodOrNest = false; // used to reassign motion state after interaction
     private float orientationWeight = 1f; // used to modify target orientation
     private float repulsionWeight = 0.1f; // used to affect the orientation of other ants in range
-    private float detectionRadius = 0.06f;
+    private float detectionRadius = 0.04f;
 
     private void Awake()
     {
@@ -195,6 +195,14 @@ public class Ant : MonoBehaviour
                 {
                     AvoidBoundary(collisions[i]);
                 }
+                else if (collisionLayer == LayerMask.NameToLayer("Nests"))
+                {
+                    InteractNest(collisions[i]);
+                }
+                else if (collisionLayer == LayerMask.NameToLayer("Foods"))
+                {
+                    InteractFood(collisions[i]);
+                }
             }
 
             // Interaction priorities: environment > neighbors
@@ -267,11 +275,11 @@ public class Ant : MonoBehaviour
 
         if (Vector2.Distance(currentOrientation, antToObstaclePerp) < Vector2.Distance(currentOrientation, antToObstaclePerpOpposite))
         {
-            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerp) + 15f, 20f);
+            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerp) + 10f, 20f);
         }
         else
         {
-            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerpOpposite) - 15f, 20f);
+            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerpOpposite) - 10f, 20f);
         }
     }
 
@@ -282,26 +290,30 @@ public class Ant : MonoBehaviour
         currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(boundaryToAnt), 40f);
     }
 
-
-    // TODO: ant should orient itself toward the food/nest before stopping
-
     // Checks if ant's collider2d is touching a food or nest's collider2d and sets motion state accordingly
-    private void InteractNest(Nest nest)
+    private void InteractNest(Collider2D nestCollider)
     {
-        if (antCollider.IsTouching(nest.GetCollider()) && info == Info.food)
+        if (info == Info.food)
         {
-            motion = Motion.stopping;
-            interactingWithFoodOrNest = true;
+            if (Vector2.Distance(currentPosition, nestCollider.ClosestPoint(currentPosition)) <= 0)
+            {
+                motion = Motion.stopping;
+                interactingWithFoodOrNest = true;
+            }
         }
     }
 
-    private void InteractFood(Food food)
+    private void InteractFood(Collider2D foodCollider)
     {
-        if (antCollider.IsTouching(food.GetCollider()) && (info == Info.nest || info == Info.nothing))
+        if (info == Info.nest || info == Info.nothing)
         {
-            motion = Motion.stopping;
-            interactingWithFoodOrNest = true;
+            if (Vector2.Distance(currentPosition, foodCollider.ClosestPoint(currentPosition)) <= 0)
+            {
+                motion = Motion.stopping;
+                interactingWithFoodOrNest = true;
+            }
         }
+        
     }
 
     // Interact with neighboring ants by adjusting orientation to avoid collision
