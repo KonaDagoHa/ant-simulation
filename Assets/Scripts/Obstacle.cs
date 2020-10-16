@@ -8,7 +8,10 @@ public class Obstacle : MonoBehaviour
     private Collider2D collider2d;
     private Tile currentTile;
 
-    void Start()
+    private ContactFilter2D contactFilter = new ContactFilter2D();
+    private Collider2D[] collisions = new Collider2D[10];
+
+    private void Start()
     {
         manager = GetComponentInParent<SimulationManager>();
         collider2d = GetComponent<Collider2D>();
@@ -16,6 +19,4 @@ public class Obstacle : MonoBehaviour
         currentTile = manager.GetTile(transform.position);
         currentTile.AddObstacle(this);
     }
-
-    public Collider2D GetCollider() { return collider2d; }
 }

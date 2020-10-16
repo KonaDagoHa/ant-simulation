@@ -38,8 +38,8 @@ public class Ant : MonoBehaviour
         // Rotation is ant's rotation in Vector3(x, y, z) corresponding with transform.eulerAngles (x and y are always 0)
         // Orientation is ant's forward facing unit vector in Vector2(x, y) calculated based on its rotation
 
-    private Vector2 currentPosition; // assign to transform.position at end of frame
-    private float currentRotationZ; // assign to transform.eulerAngles.z at end of frame
+    public Vector2 currentPosition { get; set; } // assign to transform.position at end of frame
+    public float currentRotationZ { get; set; } // assign to transform.eulerAngles.z at end of frame
 
     private Vector2 previousPosition; // position at the beginning of the previous frame
     private float stopChance = 0.05f;
@@ -47,7 +47,7 @@ public class Ant : MonoBehaviour
     private bool interactingWithFoodOrNest = false; // used to reassign motion state after interaction
     private float orientationWeight = 1f; // used to modify target orientation
     private float repulsionWeight = 0.1f; // used to affect the orientation of other ants in range
-    private float detectionRange;
+    private float detectionRadius = 0.06f;
 
     private void Awake()
     {
@@ -65,8 +65,6 @@ public class Ant : MonoBehaviour
         // Initialize rotation by setting its component to random number between -180 and 180 degrees
         transform.eulerAngles = new Vector3(0, 0, Random.Range(-180f, 180f));
         currentRotationZ = transform.eulerAngles.z;
-
-        detectionRange = transform.localScale.x * 1.1f;
 
         // Start motion determination coroutine
         StartCoroutine(DetermineMotion());
@@ -184,7 +182,7 @@ public class Ant : MonoBehaviour
 
         if (motion == Motion.moving)
         {
-            Collider2D[] collisions = Physics2D.OverlapCircleAll(currentPosition, detectionRange);
+            Collider2D[] collisions = Physics2D.OverlapCircleAll(currentPosition, detectionRadius);
 
             for (int i = 0; i < collisions.Length; i++)
             {
@@ -262,19 +260,18 @@ public class Ant : MonoBehaviour
     {
         // Ant will move perpendicular to the vector from ant to obstacle
         // Ant will move in the direction closest to its previous orientation
-        //Vector2 antToObstacle = (Vector2) obstacleCollider.transform.position - currentPosition;
-        Vector2 antToObstacle = obstacleCollider.ClosestPoint(currentPosition) - currentPosition;
+        Vector2 antToObstacle = (Vector2)obstacleCollider.transform.position - currentPosition;
         Vector2 antToObstaclePerp = Vector2.Perpendicular(antToObstacle);
         Vector2 antToObstaclePerpOpposite = antToObstaclePerp * -1;
         Vector2 currentOrientation = SimulationManager.RotationZToOrientation(currentRotationZ);
 
         if (Vector2.Distance(currentOrientation, antToObstaclePerp) < Vector2.Distance(currentOrientation, antToObstaclePerpOpposite))
         {
-            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerp), 15f);
+            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerp) + 15f, 20f);
         }
         else
         {
-            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerpOpposite), 15f);
+            currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToObstaclePerpOpposite) - 15f, 20f);
         }
     }
 

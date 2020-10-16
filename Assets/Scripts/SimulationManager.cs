@@ -70,24 +70,6 @@ public class SimulationManager : MonoBehaviour
         leftWall.transform.localScale = new Vector2(1, RowCount + 2);
         leftWall.transform.position = new Vector2(-1, -1);
 
-        /*
-        // Corner pieces (prevents ants from getting stuck in corner)
-        GameObject topLeft = Instantiate(boundaryWallPrefab, transform);
-        topLeft.transform.eulerAngles = new Vector3(0, 0, 45);
-        topLeft.transform.position = new Vector2(0f, RowCount - 0.05f);
-
-        GameObject topRight = Instantiate(boundaryWallPrefab, transform);
-        topRight.transform.eulerAngles = new Vector3(0, 0, -45);
-        topRight.transform.position = new Vector2(ColumnCount - 0.05f, RowCount);
-
-        GameObject bottomRight = Instantiate(boundaryWallPrefab, transform);
-        bottomRight.transform.eulerAngles = new Vector3(0, 0, -135);
-        bottomRight.transform.position = new Vector2(ColumnCount, 0.05f);
-
-        GameObject bottomLeft = Instantiate(boundaryWallPrefab, transform);
-        bottomLeft.transform.eulerAngles = new Vector3(0, 0, 135);
-        bottomLeft.transform.position = new Vector2(0.05f, 0f);
-        */
     }
 
     private void InitNests()
@@ -103,8 +85,6 @@ public class SimulationManager : MonoBehaviour
 
     private void InitObstacles()
     {
-        Instantiate(obstaclePrefab, transform);
-        Instantiate(obstaclePrefab, transform);
         Instantiate(obstaclePrefab, transform);
     }
 

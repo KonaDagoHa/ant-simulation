@@ -153,5 +153,5 @@ MonoBehaviour:
   boundaryWallPrefab: {fileID: 7212769829105208634, guid: 26bcce20be42141ea86324057c254352,
     type: 3}
   rowCount: 4
-  columnCount: 4
+  columnCount: 6
   antCount: 500
