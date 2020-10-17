@@ -8,7 +8,7 @@ using UnityEngine;
 [RequireComponent(typeof(CapsuleCollider2D))]
 public class Ant : MonoBehaviour
 {
-    private enum Info // Info to transferred to other ants
+    public enum Info // Info to transferred to other ants
     {
         nothing, // No recent encounters
         food, // Recent encounter with food source
@@ -24,13 +24,14 @@ public class Ant : MonoBehaviour
     private CapsuleCollider2D antCollider; // main collider to be detected by other ants
 
     private float maxDeviationAngle = 30f; // Maximum turning angle of new orientations
-    private float moveSpeed = 0.1f; // Movement speed
+    private float moveSpeed = 0.08f; // Movement speed
 
     // Timers for coroutines (in seconds)
     private float stopTimeLength = 1f; // how long ants should stop for
-    private float determineMotionInterval = 0.2f; // time interval for running DetermineMotion() (increase for better performance)
+    private float determineMotionInterval = 0.1f; // time interval for running DetermineMotion() (increase for better performance)
 
-    private Info info = Info.nothing;
+    //public Info info { get; set; } = Info.nothing;
+    public Info info = Info.nothing;
     private Motion motion = Motion.moving;
 
     // Guide:
@@ -42,12 +43,14 @@ public class Ant : MonoBehaviour
     public float currentRotationZ { get; set; } // assign to transform.eulerAngles.z at end of frame
 
     private Vector2 previousPosition; // position at the beginning of the previous frame
-    private float stopChance = -1;
+    private float stopChance = 0.005f;
     private bool stopTimerIsRunning = false; // used to avoid the stopTimer coroutine stacking per frame
     private bool interactingWithFoodOrNest = false; // used to reassign motion state after interaction
     private float orientationWeight = 1f; // used to modify target orientation
     private float repulsionWeight = 0.1f; // used to affect the orientation of other ants in range
     private float detectionRadius = 0.04f;
+    private float interactNeighborCooldownTime = 0.1f; // limits how many times ant can interact with neighboring ants
+    private bool interactedWithNeighbor = false;
 
     private void Awake()
     {
@@ -71,6 +74,9 @@ public class Ant : MonoBehaviour
 
         // Start stopping coroutine
         StartCoroutine(StopTimer());
+
+        // Start neighbor interaction coroutine
+        StartCoroutine(InteractNeighborCooldown());
 
         
     }
@@ -140,12 +146,11 @@ public class Ant : MonoBehaviour
             if (motion == Motion.stopping && stopTimerIsRunning)
             { 
                 yield return new WaitForSeconds(stopTimeLength);
-                motion = Motion.moving;
-                stopTimerIsRunning = false;
-
+                
                 // For stopping to interact with food/nest
                 if (interactingWithFoodOrNest)
                 {
+                    yield return new WaitForSeconds(stopTimeLength); //  Ants take twice as much stop time to collect/deposit food
                     interactingWithFoodOrNest = false;
                     if (info == Info.nest || info == Info.nothing)
                     {
@@ -156,6 +161,8 @@ public class Ant : MonoBehaviour
                         info = Info.nest;
                     }
                 }
+                motion = Motion.moving;
+                stopTimerIsRunning = false;
 
             }
             yield return null; // Runs every frame
@@ -202,6 +209,10 @@ public class Ant : MonoBehaviour
                 else if (collisionLayer == LayerMask.NameToLayer("Foods"))
                 {
                     InteractFood(collisions[i]);
+                }
+                else if (collisionLayer == LayerMask.NameToLayer("Ants"))
+                {
+                    InteractNeighborAnt(collisions[i]);
                 }
             }
 
@@ -301,6 +312,10 @@ public class Ant : MonoBehaviour
                 interactingWithFoodOrNest = true;
             }
         }
+        else if (info == Info.nothing)
+        {
+            info = Info.nest;
+        }
     }
 
     private void InteractFood(Collider2D foodCollider)
@@ -317,9 +332,34 @@ public class Ant : MonoBehaviour
     }
 
     // Interact with neighboring ants by adjusting orientation to avoid collision
-    private void InteractNeighbors()
+    private void InteractNeighborAnt(Collider2D neighborAntCollider)
     {
+        if (!interactedWithNeighbor)
+        {
+            interactedWithNeighbor = true;
+            Ant neighborAnt = neighborAntCollider.GetComponent<Ant>();
+            Info neighborInfo = neighborAnt.info;
+            if (((info == Info.nest || info == Info.nothing) && neighborInfo == Info.food) ||
+                (info == Info.food && neighborInfo == Info.nest))
+            {
+                // move toward neighbor's previous position
+                Vector2 antToNeighborPrevious = neighborAnt.previousPosition - currentPosition;
+                currentRotationZ = Mathf.MoveTowardsAngle(currentRotationZ, SimulationManager.OrientationToRotationZ(antToNeighborPrevious), 20f);
+            }
+        }
+    }
 
+    private IEnumerator InteractNeighborCooldown()
+    {
+        while (true)
+        {
+            if (interactedWithNeighbor)
+            {
+                yield return new WaitForSeconds(interactNeighborCooldownTime);
+                interactedWithNeighbor = false;
+            }
+            yield return null;
+        }
     }
 
     // Check for collisions with neighbor ants and grid boundaries
