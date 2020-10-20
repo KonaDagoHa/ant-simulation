@@ -110,8 +110,11 @@ public class Ant : MonoBehaviour
             currentPosition = new Vector2(clampX, clampY);
         }
 
-        transform.eulerAngles = new Vector3(0, 0, currentRotationZ);
-        transform.position = currentPosition;
+        //transform.eulerAngles = new Vector3(0, 0, currentRotationZ);
+        //transform.position = currentPosition;
+        Rigidbody2D rb = GetComponent<Rigidbody2D>();
+        rb.MoveRotation(currentRotationZ);
+        rb.MovePosition(currentPosition);
 
     }
 
@@ -196,7 +199,7 @@ public class Ant : MonoBehaviour
                 int collisionLayer = collisions[i].gameObject.layer;
                 if (collisionLayer == LayerMask.NameToLayer("Obstacles"))
                 {
-                    AvoidObstacle(collisions[i]);
+                    //AvoidObstacle(collisions[i]);
                 }
                 else if (collisionLayer == LayerMask.NameToLayer("Boundaries"))
                 {
@@ -212,7 +215,7 @@ public class Ant : MonoBehaviour
                 }
                 else if (collisionLayer == LayerMask.NameToLayer("Ants"))
                 {
-                    InteractNeighborAnt(collisions[i]);
+                    //InteractNeighborAnt(collisions[i]);
                 }
             }
 
